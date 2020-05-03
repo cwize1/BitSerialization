@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace BitSerialization.Reflection
+namespace BitSerialization.Common
 {
     public enum BitArraySizeType
     {

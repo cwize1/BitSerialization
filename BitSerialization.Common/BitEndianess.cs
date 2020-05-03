@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace BitSerialization.Reflection
+namespace BitSerialization.Common
 {
     public enum BitEndianess
     {

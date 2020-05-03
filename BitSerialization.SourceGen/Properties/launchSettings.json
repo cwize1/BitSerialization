@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "BitSerialization.SourceGen": {
+      "commandName": "Project",
+      "nativeDebugging": true
+    }
+  }
+}

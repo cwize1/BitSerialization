@@ -1,5 +1,6 @@
-using BitSerialization.Reflection;
+using BitSerialization.Common;
 using BitSerialization.Tests.Types;
+using System;
 using Xunit;
 
 namespace BitSerialization.Tests
@@ -38,6 +39,23 @@ namespace BitSerialization.Tests
 
             StructA value2;
             BitSerializerStruct<StructA>.Deserialize(output, out value2);
+        }
+
+        [Fact]
+        public void Basic3()
+        {
+            StructA value = new StructA()
+            {
+                A = 3,
+                F = EnumA.A,
+                G = EnumB.B,
+            };
+
+            byte[] output = new byte[StructA.Size];
+            StructASerializer.Serialize(output, value);
+
+            StructA value2;
+            StructASerializer.Deserialize(output, out value2);
         }
 
         [Fact]

@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace BitSerialization.Reflection.Implementation
+namespace BitSerialization.Common.Implementation
 {
     internal sealed class BitSerializerUInt8Array :
         BitSerializerArray<byte>

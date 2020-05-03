@@ -1,4 +1,5 @@
-﻿using System.Runtime.InteropServices;
+﻿using BitSerialization.Common;
+using System.Runtime.InteropServices;
 
 namespace BitSerialization.Tests.Types
 {
@@ -16,6 +17,7 @@ namespace BitSerialization.Tests.Types
     }
 
     [StructLayout(LayoutKind.Sequential)]
+    [BitStruct]
     internal struct StructA
     {
         public const int Size = 20;

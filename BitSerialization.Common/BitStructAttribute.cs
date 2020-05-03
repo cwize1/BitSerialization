@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace BitSerialization.Reflection
+namespace BitSerialization.Common
 {
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct)]
     public class BitStructAttribute :

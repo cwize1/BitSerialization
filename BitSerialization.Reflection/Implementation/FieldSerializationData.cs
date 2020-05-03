@@ -1,6 +1,6 @@
 ﻿using System.Reflection;
 
-namespace BitSerialization.Reflection.Implementation
+namespace BitSerialization.Common.Implementation
 {
     internal struct FieldSerializationData
     {

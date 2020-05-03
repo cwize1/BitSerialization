@@ -5,9 +5,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
-using BitSerialization.Reflection.Implementation;
+using BitSerialization.Common.Implementation;
 
-namespace BitSerialization.Reflection
+namespace BitSerialization.Common
 {
     public static class BitSerializer
     {

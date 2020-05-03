@@ -1,9 +1,9 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>netcoreapp3.1</TargetFramework>
-
     <IsPackable>false</IsPackable>
+    <LangVersion>preview</LangVersion>
   </PropertyGroup>
 
   <ItemGroup>
@@ -14,7 +14,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\BitSerialization.Reflection\BitSerialization.Reflection.csproj" />
+    <Analyzer Include="$(SolutionDir)/BitSerialization.SourceGen/bin/$(ConfigurationName)/netstandard2.0/BitSerialization.SourceGen.dll" />
+    <ProjectReference Include="../BitSerialization.Reflection/BitSerialization.Reflection.csproj" />
+    <ProjectReference Include="..\BitSerialization.Common\BitSerialization.Common.csproj" />
   </ItemGroup>
 
 </Project>

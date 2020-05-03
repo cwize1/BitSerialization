@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
-using BitSerialization.Reflection.Implementation;
+using BitSerialization.Common.Implementation;
 
-namespace BitSerialization.Reflection
+namespace BitSerialization.Common
 {
     public static class BitSerializerStruct<T>
         where T : struct

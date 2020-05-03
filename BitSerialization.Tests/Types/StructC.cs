@@ -1,9 +1,10 @@
-﻿using BitSerialization.Reflection;
+﻿using BitSerialization.Common;
 using System.Runtime.InteropServices;
 
 namespace BitSerialization.Tests.Types
 {
     [StructLayout(LayoutKind.Sequential)]
+    [BitStruct]
     internal struct StructC
     {
         public static int Size(int extensionCount)
@@ -12,6 +13,7 @@ namespace BitSerialization.Tests.Types
         }
 
         [StructLayout(LayoutKind.Sequential)]
+        [BitStruct]
         public struct StructCSub
         {
             public const int Size = 30;
