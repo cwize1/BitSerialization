@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using BitSerialization.Common;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -13,6 +14,34 @@ namespace BitSerialization.SourceGen
     public class HelloWorldGenerator :
         ISourceGenerator
     {
+        struct IntegerTypeInfo
+        {
+            public string Name;
+            public int Size;
+            public bool HasEndianess;
+
+            public IntegerTypeInfo(string name, int size, bool hasEndianess)
+            {
+                this.Name = name;
+                this.Size = size;
+                this.HasEndianess = hasEndianess;
+            }
+        }
+
+        private IntegerTypeInfo[] IntegerTypeInfoList = new IntegerTypeInfo[]
+        {
+            new IntegerTypeInfo(nameof(Byte), sizeof(Byte), false),
+            new IntegerTypeInfo(nameof(SByte), sizeof(SByte), false),
+            new IntegerTypeInfo(nameof(UInt16), sizeof(UInt16), true),
+            new IntegerTypeInfo(nameof(Int16), sizeof(Int16), true),
+            new IntegerTypeInfo(nameof(UInt32), sizeof(UInt32), true),
+            new IntegerTypeInfo(nameof(Int32), sizeof(Int32), true),
+            new IntegerTypeInfo(nameof(UInt64), sizeof(UInt64), true),
+            new IntegerTypeInfo(nameof(Int64), sizeof(Int64), true),
+        };
+
+        private string[] EndianNameList = new string[] { "LittleEndian", "BigEndian" };
+
         public void Initialize(InitializationContext context)
         {
             // Register a syntax receiver that will be created for each generation pass
@@ -40,8 +69,118 @@ namespace BitSerialization.SourceGen
 
         public void Execute(SourceGeneratorContext context)
         {
-            Compilation compilation = context.Compilation;
+            WritePrimitivesSerializerClass(context);
+            WriteSerializerClasses(context);
+        }
 
+        public void WritePrimitivesSerializerClass(SourceGeneratorContext context)
+        {
+            var sourceBuilder = new StringBuilder();
+            sourceBuilder.Append(@"
+using System;
+using System.Buffers.Binary;
+
+namespace BitSerialization.Generated
+{
+    internal static class BitPrimitivesSerializer
+    {
+        public static bool TrySerializeByte(Span<byte> output, byte value, out Span<byte> outputNew)
+        {
+            if (output.Length < 1)
+            {
+                outputNew = default;
+                return false;
+            }
+            output[0] = value;
+            outputNew = output.Slice(1);
+            return true;
+        }
+
+        public static bool TryDeserializeByte(ReadOnlySpan<byte> input, out byte value, out ReadOnlySpan<byte> inputNew)
+        {
+            if (input.Length < 1)
+            {
+                value = default;
+                inputNew = default;
+                return false;
+            }
+            value = input[0];
+            inputNew = input.Slice(1);
+            return true;
+        }
+
+        public static bool TrySerializeSByte(Span<byte> output, sbyte value, out Span<byte> outputNew)
+        {
+            if (output.Length < 1)
+            {
+                outputNew = default;
+                return false;
+            }
+            output[0] = (byte)value;
+            outputNew = output.Slice(1);
+            return true;
+        }
+
+        public static bool TryDeserializeSByte(ReadOnlySpan<byte> input, out sbyte value, out ReadOnlySpan<byte> inputNew)
+        {
+            if (input.Length < 1)
+            {
+                value = default;
+                inputNew = default;
+                return false;
+            }
+            value = (sbyte)input[0];
+            inputNew = input.Slice(1);
+            return true;
+        }
+");
+
+            foreach (IntegerTypeInfo integerTypeInfo in IntegerTypeInfoList)
+            {
+                if (!integerTypeInfo.HasEndianess)
+                {
+                    continue;
+                }
+
+                foreach (string endianName in EndianNameList)
+                {
+                    sourceBuilder.Append($@"
+        public static bool TrySerialize{integerTypeInfo.Name}{endianName}(Span<byte> output, {integerTypeInfo.Name} value, out Span<byte> outputNew)
+        {{
+            if (!BinaryPrimitives.TryWrite{integerTypeInfo.Name}{endianName}(output, value))
+            {{
+                outputNew = default;
+                return false;
+            }}
+            outputNew = output.Slice({integerTypeInfo.Size});
+            return true;
+        }}
+
+        public static bool TryDeserialize{integerTypeInfo.Name}{endianName}(ReadOnlySpan<byte> input, out {integerTypeInfo.Name} value, out ReadOnlySpan<byte> inputNew)
+        {{
+            if (!BinaryPrimitives.TryRead{integerTypeInfo.Name}{endianName}(input, out value))
+            {{
+                inputNew = default;
+                return false;
+            }}
+            inputNew = input.Slice({integerTypeInfo.Size});
+            return true;
+        }}
+");
+                }
+            }
+
+            sourceBuilder.Append($@"
+    }}
+}}
+");
+
+            string sourceCode = sourceBuilder.ToString();
+            context.AddSource("BitPrimitivesSerializer.cs", SourceText.From(sourceCode, Encoding.UTF8));
+        }
+
+        public void WriteSerializerClasses(SourceGeneratorContext context)
+        {
             // retreive the populated receiver
             SyntaxReceiver receiver = context.SyntaxReceiver as SyntaxReceiver;
             if (receiver == null)
@@ -49,28 +188,27 @@ namespace BitSerialization.SourceGen
                 return;
             }
 
-            INamedTypeSymbol bitStructAttributeSymbol = compilation.GetTypeByMetadataName("BitSerialization.Common.BitStructAttribute");
+            INamedTypeSymbol bitStructAttributeSymbol = context.Compilation.GetTypeByMetadataName("BitSerialization.Common.BitStructAttribute");
+            Func<ISymbol, AttributeData> getBitStructAttribute = (symbol) => symbol.GetAttributes().FirstOrDefault((ad) => ad.AttributeClass.Equals(bitStructAttributeSymbol, SymbolEqualityComparer.Default));
 
             foreach (TypeDeclarationSyntax classDeclarationSyntax in receiver.CandidateClasses)
             {
-                SemanticModel model = compilation.GetSemanticModel(classDeclarationSyntax.SyntaxTree);
+                SemanticModel model = context.Compilation.GetSemanticModel(classDeclarationSyntax.SyntaxTree);
                 INamedTypeSymbol classSymbol = model.GetDeclaredSymbol(classDeclarationSyntax);
 
-                AttributeData attributeData = classSymbol.GetAttributes().FirstOrDefault((ad) => ad.AttributeClass.Equals(bitStructAttributeSymbol, SymbolEqualityComparer.Default));
+                AttributeData attributeData = getBitStructAttribute(classSymbol);
                 if (attributeData == null)
                 {
                     continue;
                 }
 
-                string className = classSymbol.Name;
+                BitStructAttribute bitStructAttribute = SourceGenUtils.CreateAttributeInstance<BitStructAttribute>(attributeData);
+                string endianessName = bitStructAttribute.Endianess == BitEndianess.BigEndian ?
+                    "BigEndian" :
+                    "LittleEndian";
 
-                string classFullName = classSymbol.ContainingType != null ?
-                    $"global::{classSymbol.ContainingType.ContainingNamespace}.{classSymbol.ContainingType.Name}.{classSymbol.Name}" :
-                    $"global::{classSymbol.ContainingNamespace}.{classSymbol.Name}";
-
-                string serializerClassName = classSymbol.ContainingType != null ?
-                    $"{classSymbol.ContainingType.Name}_{className}Serializer" :
-                    $"{className}Serializer";
+                string classFullName = GetFullName(classSymbol);
+                string serializerClassName = CreateSerializerName(classSymbol);
 
                 var sourceBuilder = new StringBuilder();
                 sourceBuilder.Append($@"
@@ -98,74 +236,97 @@ namespace {classSymbol.ContainingNamespace}
                 foreach (ISymbol classMember in classSymbol.GetMembers())
                 {
                     IFieldSymbol classMemberAsField = classMember as IFieldSymbol;
-                    if (classMemberAsField == null)
+                    if (classMemberAsField == null ||
+                        classMemberAsField.IsStatic ||
+                        classMemberAsField.IsConst)
                     {
                         continue;
                     }
 
-                    string serializeException = $@"throw new Exception(string.Format(""Not enough space to serialize field {{0}} from type {{1}}."", ""{classMemberAsField.Name}"", ""{className}""));";
-                    string deserializeException = $@"throw new Exception(string.Format(""Not enough space to deserialize field {{0}} from type {{1}}."", ""{classMemberAsField.Name}"", ""{className}""));";
+                    if (classMemberAsField.Type.IsIntegerType() ||
+                        classMemberAsField.Type.TypeKind == TypeKind.Enum)
+                    {
+                        INamedTypeSymbol fieldType = (INamedTypeSymbol)classMemberAsField.Type;
 
-                    switch (classMemberAsField.Type.SpecialType)
-                    {
-                    case SpecialType.System_Byte:
-                    {
+                        INamedTypeSymbol fieldUnderlyingType = fieldType;
+                        string fieldSerializeFuncName;
+                        string fieldDeserializeFuncName;
+                        string fieldSerializeTypeCast = string.Empty;
+                        string fieldDeserializeTypeCast = string.Empty;
+
+                        if (classMemberAsField.Type.TypeKind == TypeKind.Enum)
+                        {
+                            fieldUnderlyingType = fieldType.EnumUnderlyingType;
+                            fieldSerializeTypeCast = $"({fieldUnderlyingType.Name})";
+                            fieldDeserializeTypeCast = $"({fieldType.Name})";
+                        }
+
+                        switch (fieldType.SpecialType)
+                        {
+                        case SpecialType.System_Byte:
+                        case SpecialType.System_SByte:
+                            fieldSerializeFuncName = $"global::BitSerialization.Generated.BitPrimitivesSerializer.TrySerialize{fieldUnderlyingType.Name}";
+                            fieldDeserializeFuncName = $"global::BitSerialization.Generated.BitPrimitivesSerializer.TryDeserialize{fieldUnderlyingType.Name}";
+                            break;
+
+                        case SpecialType.System_UInt16:
+                        case SpecialType.System_Int16:
+                        case SpecialType.System_UInt32:
+                        case SpecialType.System_Int32:
+                        case SpecialType.System_UInt64:
+                        case SpecialType.System_Int64:
+                        default:
+                            fieldSerializeFuncName = $"global::BitSerialization.Generated.BitPrimitivesSerializer.TrySerialize{fieldUnderlyingType.Name}{endianessName}";
+                            fieldDeserializeFuncName = $"global::BitSerialization.Generated.BitPrimitivesSerializer.TryDeserialize{fieldUnderlyingType.Name}{endianessName}";
+                            break;
+                        }
+
                         serializeFuncBuilder.Append($@"
-            if (output.Length < 1)
+            if (!{fieldSerializeFuncName}(output, {fieldSerializeTypeCast}value.{classMemberAsField.Name}, out output))
             {{
-                {serializeException}
+                throw new Exception(string.Format(""Not enough space to serialize field {{0}} from type {{1}}."", ""{classMemberAsField.Name}"", ""{classSymbol.Name}""));
             }}
-            output[0] = value.{classMemberAsField.Name};
-            output = output.Slice(1);
 ");
 
                         deserializeFuncBuilder.Append($@"
-            if (input.Length < 1)
             {{
-                {deserializeException}
+                if (!{fieldDeserializeFuncName}(input, out var fieldValue, out input))
+                {{
+                    throw new Exception(string.Format(""Not enough space to deserialize field {{0}} from type {{1}}."", ""{classMemberAsField.Name}"", ""{classSymbol.Name}""));
+                }}
+                value.{classMemberAsField.Name} = {fieldDeserializeTypeCast}fieldValue;
             }}
-            value.{classMemberAsField.Name} = input[0];
-            input = input.Slice(1);
 ");
-                        break;
                     }
-                    case SpecialType.System_SByte:
+                    else if (classMemberAsField.Type.TypeKind == TypeKind.Class ||
+                        classMemberAsField.Type.TypeKind == TypeKind.Struct)
                     {
+                        if (getBitStructAttribute(classMemberAsField.Type) == null)
+                        {
+                            throw new Exception($"Type {classMemberAsField.Type.Name} must have a BitStruct attribute.");
+                        }
+
+                        string serializerClassFullName = CreateSerializerFullName((INamedTypeSymbol)classMemberAsField.Type);
+
                         serializeFuncBuilder.Append($@"
-            if (output.Length < 1)
-            {{
-                {serializeException}
-            }}
-            output[0] = (byte)value.{classMemberAsField.Name};
-            output = output.Slice(1);
+            output = {serializerClassFullName}.Serialize(output, value.{classMemberAsField.Name});
 ");
 
                         deserializeFuncBuilder.Append($@"
-            if (input.Length < 1)
             {{
-                {deserializeException}
+                input = {serializerClassFullName}.Deserialize(input, out var fieldValue);
+                value.{classMemberAsField.Name} = fieldValue;
             }}
-            value.{classMemberAsField.Name} = (sbyte)input[0];
-            input = input.Slice(1);
 ");
-                        break;
                     }
-                    case SpecialType.System_UInt16:
-                    {
-                        serializeFuncBuilder.Append($@"
-            if (!BinaryPrimitives.TryWriteInt16LittleEndian(itr, fieldValue))
-            {{
-                {serializeException}
-            }}
-            output = output.Slice(2);
-");
-                        break;
-                    }
-                    case SpecialType.System_Int16:
+                    else if (classMemberAsField.Type.TypeKind == TypeKind.Array)
                     {
 
-                        break;
                     }
+                    else
+                    {
+                        continue;
+                        //throw new Exception($"Can't serialize type {classMemberAsField.Type.Name}.");
                     }
                 }
 
@@ -189,6 +350,30 @@ namespace {classSymbol.ContainingNamespace}
                 string sourceCode = sourceBuilder.ToString();
                 context.AddSource($"{serializerClassName}.cs", SourceText.From(sourceCode, Encoding.UTF8));
             }
+        }
+
+        private static string GetFullName(INamedTypeSymbol classSymbol)
+        {
+            return $"{GetClassNamespace(classSymbol)}.{classSymbol.Name}";
+        }
+
+        private static string GetClassNamespace(INamedTypeSymbol classSymbol)
+        {
+            return classSymbol.ContainingType != null ?
+                $"global::{classSymbol.ContainingType.ContainingNamespace}.{classSymbol.ContainingType.Name}" :
+                $"global::{classSymbol.ContainingNamespace}";
+        }
+
+        private static string CreateSerializerName(INamedTypeSymbol classSymbol)
+        {
+            return classSymbol.ContainingType != null ?
+                $"{classSymbol.ContainingType.Name}_{classSymbol.Name}Serializer" :
+                $"{classSymbol.Name}Serializer";
+        }
+
+        private static string CreateSerializerFullName(INamedTypeSymbol classSymbol)
+        {
+            return $"{GetClassNamespace(classSymbol)}.{CreateSerializerName(classSymbol)}";
         }
     }
 }

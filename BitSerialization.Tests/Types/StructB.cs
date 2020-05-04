@@ -21,11 +21,13 @@ namespace BitSerialization.Tests.Types
         public ushort D;
         public ushort E;
         public EnumC F;
-        [BitArray(BitArraySizeType.Const, ConstSize = 32)]
-        public byte[] G;
+        public StructA G;
         [BitArray(BitArraySizeType.Const, ConstSize = 32)]
         public byte[] H;
         [BitArray(BitArraySizeType.Const, ConstSize = 32)]
         public byte[] I;
+        [BitArray(BitArraySizeType.Const, ConstSize = 32)]
+        public byte[] J;
+        public ushort K;
     }
 }

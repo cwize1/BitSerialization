@@ -63,9 +63,9 @@ namespace BitSerialization.Tests
         {
             StructB value = new StructB()
             {
-                G = new byte[] { 0x11, 0x12, 0x13, 0x14 },
-                H = new byte[] { 0x21, 0x22, 0x23, 0x24 },
-                I = new byte[] { 0x31, 0x32, 0x33, 0x34 },
+                H = new byte[] { 0x11, 0x12, 0x13, 0x14 },
+                I = new byte[] { 0x21, 0x22, 0x23, 0x24 },
+                J = new byte[] { 0x31, 0x32, 0x33, 0x34 },
             };
 
             byte[] output = new byte[StructB.Size];
@@ -80,9 +80,9 @@ namespace BitSerialization.Tests
         {
             StructB value = new StructB()
             {
-                G = new byte[] { 0x11, 0x12, 0x13, 0x14 },
-                H = new byte[] { 0x21, 0x22, 0x23, 0x24 },
-                I = new byte[] { 0x31, 0x32, 0x33, 0x34 },
+                H = new byte[] { 0x11, 0x12, 0x13, 0x14 },
+                I = new byte[] { 0x21, 0x22, 0x23, 0x24 },
+                J = new byte[] { 0x31, 0x32, 0x33, 0x34 },
             };
 
             byte[] output = new byte[StructB.Size];
