@@ -13,7 +13,7 @@ namespace BitSerialization.Tests.Types
     [BitStruct]
     internal struct StructB
     {
-        public const int Size = 108;
+        public const int Size = 132;
 
         public ushort A;
         public ushort B;

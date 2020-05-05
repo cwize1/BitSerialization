@@ -20,7 +20,7 @@ namespace BitSerialization.Tests.Types
     [BitStruct]
     internal struct StructA
     {
-        public const int Size = 20;
+        public const int Size = 24;
 
         public byte A;
         public byte B;

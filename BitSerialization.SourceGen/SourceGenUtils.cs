@@ -1,4 +1,5 @@
 ﻿using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.Text;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -27,10 +28,22 @@ namespace BitSerialization.SourceGen
             }
         }
 
+        private static object ConvertTypedConstantToObject(TypedConstant typedConstant)
+        {
+            if (typedConstant.Type.TypeKind == TypeKind.Enum)
+            {
+                Type type = Type.GetType($"{typedConstant.Type.ContainingNamespace}.{typedConstant.Type.Name}, {typedConstant.Type.ContainingAssembly}", throwOnError: true);
+                return Enum.ToObject(type, typedConstant.Value);
+            }
+            return typedConstant.Value;
+        }
+
         public static T CreateAttributeInstance<T>(AttributeData attributeData)
         {
             Type type = typeof(T);
-            T result = (T)Activator.CreateInstance(typeof(T), attributeData.ConstructorArguments.Select((arg) => arg.Value).ToArray());
+
+            object[] contructorArgs = attributeData.ConstructorArguments.Select(ConvertTypedConstantToObject).ToArray();
+            T result = (T)Activator.CreateInstance(typeof(T), contructorArgs);
 
             foreach (var kvp in attributeData.NamedArguments)
             {
@@ -38,6 +51,22 @@ namespace BitSerialization.SourceGen
             }
 
             return result;
+        }
+
+        public static AttributeData GetAttributeData(ISymbol symbol, INamedTypeSymbol attributeSymbol)
+        {
+            return symbol.GetAttributes().FirstOrDefault((ad) => ad.AttributeClass.Equals(attributeSymbol, SymbolEqualityComparer.Default));
+        }
+
+        public static T GetAttribute<T>(ISymbol symbol, INamedTypeSymbol attributeSymbol) where
+            T : class
+        {
+            AttributeData attributeData = GetAttributeData(symbol, attributeSymbol);
+            if (attributeData == null)
+            {
+                return null;
+            }
+            return CreateAttributeInstance<T>(attributeData);
         }
     }
 }

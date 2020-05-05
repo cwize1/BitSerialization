@@ -14,34 +14,6 @@ namespace BitSerialization.SourceGen
     public class HelloWorldGenerator :
         ISourceGenerator
     {
-        struct IntegerTypeInfo
-        {
-            public string Name;
-            public int Size;
-            public bool HasEndianess;
-
-            public IntegerTypeInfo(string name, int size, bool hasEndianess)
-            {
-                this.Name = name;
-                this.Size = size;
-                this.HasEndianess = hasEndianess;
-            }
-        }
-
-        private IntegerTypeInfo[] IntegerTypeInfoList = new IntegerTypeInfo[]
-        {
-            new IntegerTypeInfo(nameof(Byte), sizeof(Byte), false),
-            new IntegerTypeInfo(nameof(SByte), sizeof(SByte), false),
-            new IntegerTypeInfo(nameof(UInt16), sizeof(UInt16), true),
-            new IntegerTypeInfo(nameof(Int16), sizeof(Int16), true),
-            new IntegerTypeInfo(nameof(UInt32), sizeof(UInt32), true),
-            new IntegerTypeInfo(nameof(Int32), sizeof(Int32), true),
-            new IntegerTypeInfo(nameof(UInt64), sizeof(UInt64), true),
-            new IntegerTypeInfo(nameof(Int64), sizeof(Int64), true),
-        };
-
-        private string[] EndianNameList = new string[] { "LittleEndian", "BigEndian" };
-
         public void Initialize(InitializationContext context)
         {
             // Register a syntax receiver that will be created for each generation pass
@@ -79,96 +51,49 @@ namespace BitSerialization.SourceGen
             sourceBuilder.Append(@"
 using System;
 using System.Buffers.Binary;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace BitSerialization.Generated
 {
     internal static class BitPrimitivesSerializer
     {
-        public static bool TrySerializeByte(Span<byte> output, byte value, out Span<byte> outputNew)
+        public static void WriteByte(Span<byte> destination, byte value)
         {
-            if (output.Length < 1)
+            if (destination.Length < 1)
             {
-                outputNew = default;
-                return false;
+                throw new ArgumentOutOfRangeException(nameof(destination));
             }
-            output[0] = value;
-            outputNew = output.Slice(1);
-            return true;
+            destination[0] = value;
         }
 
-        public static bool TryDeserializeByte(ReadOnlySpan<byte> input, out byte value, out ReadOnlySpan<byte> inputNew)
+        public static void WriteSByte(Span<byte> destination, sbyte value)
         {
-            if (input.Length < 1)
+            if (destination.Length < 1)
             {
-                value = default;
-                inputNew = default;
-                return false;
+                throw new ArgumentOutOfRangeException(nameof(destination));
             }
-            value = input[0];
-            inputNew = input.Slice(1);
-            return true;
+            destination[0] = (byte)value;
         }
 
-        public static bool TrySerializeSByte(Span<byte> output, sbyte value, out Span<byte> outputNew)
+        public static byte ReadByte(ReadOnlySpan<byte> source)
         {
-            if (output.Length < 1)
+            if (source.Length < 1)
             {
-                outputNew = default;
-                return false;
+                throw new ArgumentOutOfRangeException(nameof(source));
             }
-            output[0] = (byte)value;
-            outputNew = output.Slice(1);
-            return true;
+            return source[0];
         }
 
-        public static bool TryDeserializeSByte(ReadOnlySpan<byte> input, out sbyte value, out ReadOnlySpan<byte> inputNew)
+        public static sbyte ReadSByte(ReadOnlySpan<byte> source)
         {
-            if (input.Length < 1)
+            if (source.Length < 1)
             {
-                value = default;
-                inputNew = default;
-                return false;
+                throw new ArgumentOutOfRangeException(nameof(source));
             }
-            value = (sbyte)input[0];
-            inputNew = input.Slice(1);
-            return true;
+            return (sbyte)source[0];
         }
 ");
-
-            foreach (IntegerTypeInfo integerTypeInfo in IntegerTypeInfoList)
-            {
-                if (!integerTypeInfo.HasEndianess)
-                {
-                    continue;
-                }
-
-                foreach (string endianName in EndianNameList)
-                {
-                    sourceBuilder.Append($@"
-        public static bool TrySerialize{integerTypeInfo.Name}{endianName}(Span<byte> output, {integerTypeInfo.Name} value, out Span<byte> outputNew)
-        {{
-            if (!BinaryPrimitives.TryWrite{integerTypeInfo.Name}{endianName}(output, value))
-            {{
-                outputNew = default;
-                return false;
-            }}
-            outputNew = output.Slice({integerTypeInfo.Size});
-            return true;
-        }}
-
-        public static bool TryDeserialize{integerTypeInfo.Name}{endianName}(ReadOnlySpan<byte> input, out {integerTypeInfo.Name} value, out ReadOnlySpan<byte> inputNew)
-        {{
-            if (!BinaryPrimitives.TryRead{integerTypeInfo.Name}{endianName}(input, out value))
-            {{
-                inputNew = default;
-                return false;
-            }}
-            inputNew = input.Slice({integerTypeInfo.Size});
-            return true;
-        }}
-");
-                }
-            }
 
             sourceBuilder.Append($@"
     }}
@@ -189,20 +114,19 @@ namespace BitSerialization.Generated
             }
 
             INamedTypeSymbol bitStructAttributeSymbol = context.Compilation.GetTypeByMetadataName("BitSerialization.Common.BitStructAttribute");
-            Func<ISymbol, AttributeData> getBitStructAttribute = (symbol) => symbol.GetAttributes().FirstOrDefault((ad) => ad.AttributeClass.Equals(bitStructAttributeSymbol, SymbolEqualityComparer.Default));
+            INamedTypeSymbol bitArrayAttributeSymbol = context.Compilation.GetTypeByMetadataName("BitSerialization.Common.BitArrayAttribute");
 
             foreach (TypeDeclarationSyntax classDeclarationSyntax in receiver.CandidateClasses)
             {
                 SemanticModel model = context.Compilation.GetSemanticModel(classDeclarationSyntax.SyntaxTree);
                 INamedTypeSymbol classSymbol = model.GetDeclaredSymbol(classDeclarationSyntax);
 
-                AttributeData attributeData = getBitStructAttribute(classSymbol);
-                if (attributeData == null)
+                BitStructAttribute bitStructAttribute = SourceGenUtils.GetAttribute<BitStructAttribute>(classSymbol, bitStructAttributeSymbol);
+                if (bitStructAttribute == null)
                 {
                     continue;
                 }
 
-                BitStructAttribute bitStructAttribute = SourceGenUtils.CreateAttributeInstance<BitStructAttribute>(attributeData);
                 string endianessName = bitStructAttribute.Endianess == BitEndianess.BigEndian ?
                     "BigEndian" :
                     "LittleEndian";
@@ -249,11 +173,9 @@ namespace {classSymbol.ContainingNamespace}
                         INamedTypeSymbol fieldType = (INamedTypeSymbol)classMemberAsField.Type;
 
                         INamedTypeSymbol fieldUnderlyingType = fieldType;
-                        string fieldSerializeFuncName;
-                        string fieldDeserializeFuncName;
+
                         string fieldSerializeTypeCast = string.Empty;
                         string fieldDeserializeTypeCast = string.Empty;
-
                         if (classMemberAsField.Type.TypeKind == TypeKind.Enum)
                         {
                             fieldUnderlyingType = fieldType.EnumUnderlyingType;
@@ -261,12 +183,15 @@ namespace {classSymbol.ContainingNamespace}
                             fieldDeserializeTypeCast = $"({fieldType.Name})";
                         }
 
-                        switch (fieldType.SpecialType)
+                        string fieldSerializeFuncName;
+                        string fieldDeserializeFuncName;
+
+                        switch (fieldUnderlyingType.SpecialType)
                         {
                         case SpecialType.System_Byte:
                         case SpecialType.System_SByte:
-                            fieldSerializeFuncName = $"global::BitSerialization.Generated.BitPrimitivesSerializer.TrySerialize{fieldUnderlyingType.Name}";
-                            fieldDeserializeFuncName = $"global::BitSerialization.Generated.BitPrimitivesSerializer.TryDeserialize{fieldUnderlyingType.Name}";
+                            fieldSerializeFuncName = $"global::BitSerialization.Generated.BitPrimitivesSerializer.Write{fieldUnderlyingType.Name}";
+                            fieldDeserializeFuncName = $"global::BitSerialization.Generated.BitPrimitivesSerializer.Read{fieldUnderlyingType.Name}";
                             break;
 
                         case SpecialType.System_UInt16:
@@ -275,33 +200,63 @@ namespace {classSymbol.ContainingNamespace}
                         case SpecialType.System_Int32:
                         case SpecialType.System_UInt64:
                         case SpecialType.System_Int64:
-                        default:
-                            fieldSerializeFuncName = $"global::BitSerialization.Generated.BitPrimitivesSerializer.TrySerialize{fieldUnderlyingType.Name}{endianessName}";
-                            fieldDeserializeFuncName = $"global::BitSerialization.Generated.BitPrimitivesSerializer.TryDeserialize{fieldUnderlyingType.Name}{endianessName}";
+                            fieldSerializeFuncName = $"global::System.Buffers.Binary.BinaryPrimitives.Write{fieldUnderlyingType.Name}{endianessName}";
+                            fieldDeserializeFuncName = $"global::System.Buffers.Binary.BinaryPrimitives.Read{fieldUnderlyingType.Name}{endianessName}";
                             break;
+
+                        default:
+                            throw new Exception();
                         }
 
-                        serializeFuncBuilder.Append($@"
-            if (!{fieldSerializeFuncName}(output, {fieldSerializeTypeCast}value.{classMemberAsField.Name}, out output))
+                        int typeSize;
+                        switch (fieldUnderlyingType.SpecialType)
+                        {
+                        case SpecialType.System_Byte:
+                        case SpecialType.System_SByte:
+                            typeSize = 1;
+                            break;
+
+                        case SpecialType.System_UInt16:
+                        case SpecialType.System_Int16:
+                            typeSize = 2;
+                            break;
+
+                        case SpecialType.System_UInt32:
+                        case SpecialType.System_Int32:
+                            typeSize = 4;
+                            break;
+
+                        case SpecialType.System_UInt64:
+                        case SpecialType.System_Int64:
+                            typeSize = 8;
+                            break;
+
+                        default:
+                            throw new Exception();
+                        }
+
+                            serializeFuncBuilder.Append($@"
+            if (output.Length < {typeSize})
             {{
                 throw new Exception(string.Format(""Not enough space to serialize field {{0}} from type {{1}}."", ""{classMemberAsField.Name}"", ""{classSymbol.Name}""));
             }}
+            {fieldSerializeFuncName}(output, {fieldSerializeTypeCast}value.{classMemberAsField.Name});
+            output = output.Slice({typeSize});
 ");
 
                         deserializeFuncBuilder.Append($@"
+            if (input.Length < {typeSize})
             {{
-                if (!{fieldDeserializeFuncName}(input, out var fieldValue, out input))
-                {{
-                    throw new Exception(string.Format(""Not enough space to deserialize field {{0}} from type {{1}}."", ""{classMemberAsField.Name}"", ""{classSymbol.Name}""));
-                }}
-                value.{classMemberAsField.Name} = {fieldDeserializeTypeCast}fieldValue;
+                throw new Exception(string.Format(""Not enough space to deserialize field {{0}} from type {{1}}."", ""{classMemberAsField.Name}"", ""{classSymbol.Name}""));
             }}
+            value.{classMemberAsField.Name} = {fieldDeserializeTypeCast}{fieldDeserializeFuncName}(input);
+            input = input.Slice({typeSize});
 ");
                     }
                     else if (classMemberAsField.Type.TypeKind == TypeKind.Class ||
                         classMemberAsField.Type.TypeKind == TypeKind.Struct)
                     {
-                        if (getBitStructAttribute(classMemberAsField.Type) == null)
+                        if (SourceGenUtils.GetAttributeData(classMemberAsField.Type, bitStructAttributeSymbol) == null)
                         {
                             throw new Exception($"Type {classMemberAsField.Type.Name} must have a BitStruct attribute.");
                         }
@@ -321,7 +276,26 @@ namespace {classSymbol.ContainingNamespace}
                     }
                     else if (classMemberAsField.Type.TypeKind == TypeKind.Array)
                     {
+                        var attributeData = SourceGenUtils.GetAttributeData(classMemberAsField, bitArrayAttributeSymbol);
 
+                        BitArrayAttribute bitArrayAttribute = SourceGenUtils.GetAttribute<BitArrayAttribute>(classMemberAsField, bitArrayAttributeSymbol);
+                        if (bitArrayAttribute == null)
+                        {
+                            context.ReportDiagnostic(Diagnostic.Create(new DiagnosticDescriptor("TMP", "TMP", $"Field {classMemberAsField.Name} of type {classSymbol.Name} must have a BitArray attribute.", "TMP", DiagnosticSeverity.Error, true), Location.Create("TMP", new TextSpan(), new LinePositionSpan())));
+                            continue;
+                        }
+
+                        switch (bitArrayAttribute.SizeType)
+                        {
+                        case BitArraySizeType.Const:
+                            break;
+
+                        case BitArraySizeType.EndFill:
+                            break;
+
+                        default:
+                            throw new Exception($"Unknown BitArraySizeType value of {bitArrayAttribute.SizeType}");
+                        }
                     }
                     else
                     {
