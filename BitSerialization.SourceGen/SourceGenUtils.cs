@@ -68,5 +68,17 @@ namespace BitSerialization.SourceGen
             }
             return CreateAttributeInstance<T>(attributeData);
         }
+
+        public static string GetTypeFullName(ITypeSymbol typeSymbol)
+        {
+            return $"{GetTypeNamespace(typeSymbol)}.{typeSymbol.Name}";
+        }
+
+        public static string GetTypeNamespace(ITypeSymbol typeSymbol)
+        {
+            return typeSymbol.ContainingType != null ?
+                $"global::{typeSymbol.ContainingType.ContainingNamespace}.{typeSymbol.ContainingType.Name}" :
+                $"global::{typeSymbol.ContainingNamespace}";
+        }
     }
 }

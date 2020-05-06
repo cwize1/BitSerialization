@@ -37,25 +37,16 @@ namespace BitSerialization.Tests
             byte[] output = new byte[StructA.Size];
             BitSerializerStruct<StructA>.Serialize(output, value);
 
+            byte[] output2 = new byte[StructA.Size];
+            StructASerializer.Serialize(output2, value);
+
+            Assert.Equal(output, output2);
+
             StructA value2;
             BitSerializerStruct<StructA>.Deserialize(output, out value2);
-        }
 
-        [Fact]
-        public void Basic3()
-        {
-            StructA value = new StructA()
-            {
-                A = 3,
-                F = EnumA.A,
-                G = EnumB.B,
-            };
-
-            byte[] output = new byte[StructA.Size];
-            StructASerializer.Serialize(output, value);
-
-            StructA value2;
-            StructASerializer.Deserialize(output, out value2);
+            StructA value3;
+            StructASerializer.Deserialize(output, out value3);
         }
 
         [Fact]
