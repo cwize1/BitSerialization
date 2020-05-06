@@ -114,6 +114,15 @@ namespace BitSerialization.Common
                         handled = true;
                     }
                 }
+                else if (fieldInfo.FieldType.IsStruct() ||
+                    fieldInfo.FieldType.IsClass)
+                {
+                    Type bitSerializerStructType = typeof(BitSerializerStruct<>).MakeGenericType(fieldInfo.FieldType);
+
+                    deserializeFunc = (DeserializeFieldHandler)bitSerializerStructType.GetMethod(nameof(DeserializeField)).CreateDelegate(typeof(DeserializeFieldHandler));
+                    serializeFunc = (SerializeFieldHandler)bitSerializerStructType.GetMethod(nameof(SerializeField)).CreateDelegate(typeof(SerializeFieldHandler));
+                    handled = true;
+                }
 
                 if (!handled)
                 {

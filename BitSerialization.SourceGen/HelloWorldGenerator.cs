@@ -58,46 +58,49 @@ namespace BitSerialization.Generated
 {
     internal static class BitPrimitivesSerializer
     {
-        public static void WriteByte(Span<byte> destination, byte value)
+        public static bool TryWriteByte(Span<byte> destination, byte value)
         {
             if (destination.Length < 1)
             {
-                throw new ArgumentOutOfRangeException(nameof(destination));
+                return false;
             }
             destination[0] = value;
+            return true;
         }
 
-        public static void WriteSByte(Span<byte> destination, sbyte value)
+        public static bool TryWriteSByte(Span<byte> destination, sbyte value)
         {
             if (destination.Length < 1)
             {
-                throw new ArgumentOutOfRangeException(nameof(destination));
+                return false;
             }
             destination[0] = (byte)value;
+            return true;
         }
 
-        public static byte ReadByte(ReadOnlySpan<byte> source)
+        public static bool TryReadByte(ReadOnlySpan<byte> source, out byte value)
         {
             if (source.Length < 1)
             {
-                throw new ArgumentOutOfRangeException(nameof(source));
+                value = default;
+                return false;
             }
-            return source[0];
+            value = source[0];
+            return true;
         }
 
-        public static sbyte ReadSByte(ReadOnlySpan<byte> source)
+        public static bool TryReadSByte(ReadOnlySpan<byte> source, out sbyte value)
         {
             if (source.Length < 1)
             {
-                throw new ArgumentOutOfRangeException(nameof(source));
+                value = default;
+                return false;
             }
-            return (sbyte)source[0];
+            value = (sbyte)source[0];
+            return true;
         }
-");
-
-            sourceBuilder.Append($@"
-    }}
-}}
+    }
+}
 ");
 
             string sourceCode = sourceBuilder.ToString();
@@ -190,8 +193,8 @@ namespace {classSymbol.ContainingNamespace}
                         {
                         case SpecialType.System_Byte:
                         case SpecialType.System_SByte:
-                            fieldSerializeFuncName = $"global::BitSerialization.Generated.BitPrimitivesSerializer.Write{fieldUnderlyingType.Name}";
-                            fieldDeserializeFuncName = $"global::BitSerialization.Generated.BitPrimitivesSerializer.Read{fieldUnderlyingType.Name}";
+                            fieldSerializeFuncName = $"global::BitSerialization.Generated.BitPrimitivesSerializer.TryWrite{fieldUnderlyingType.Name}";
+                            fieldDeserializeFuncName = $"global::BitSerialization.Generated.BitPrimitivesSerializer.TryRead{fieldUnderlyingType.Name}";
                             break;
 
                         case SpecialType.System_UInt16:
@@ -200,8 +203,8 @@ namespace {classSymbol.ContainingNamespace}
                         case SpecialType.System_Int32:
                         case SpecialType.System_UInt64:
                         case SpecialType.System_Int64:
-                            fieldSerializeFuncName = $"global::System.Buffers.Binary.BinaryPrimitives.Write{fieldUnderlyingType.Name}{endianessName}";
-                            fieldDeserializeFuncName = $"global::System.Buffers.Binary.BinaryPrimitives.Read{fieldUnderlyingType.Name}{endianessName}";
+                            fieldSerializeFuncName = $"global::System.Buffers.Binary.BinaryPrimitives.TryWrite{fieldUnderlyingType.Name}{endianessName}";
+                            fieldDeserializeFuncName = $"global::System.Buffers.Binary.BinaryPrimitives.TryRead{fieldUnderlyingType.Name}{endianessName}";
                             break;
 
                         default:
@@ -236,21 +239,22 @@ namespace {classSymbol.ContainingNamespace}
                         }
 
                             serializeFuncBuilder.Append($@"
-            if (output.Length < {typeSize})
+            if (!{fieldSerializeFuncName}(output, {fieldSerializeTypeCast}value.{classMemberAsField.Name}))
             {{
                 throw new Exception(string.Format(""Not enough space to serialize field {{0}} from type {{1}}."", ""{classMemberAsField.Name}"", ""{classSymbol.Name}""));
             }}
-            {fieldSerializeFuncName}(output, {fieldSerializeTypeCast}value.{classMemberAsField.Name});
             output = output.Slice({typeSize});
 ");
 
                         deserializeFuncBuilder.Append($@"
-            if (input.Length < {typeSize})
             {{
-                throw new Exception(string.Format(""Not enough space to deserialize field {{0}} from type {{1}}."", ""{classMemberAsField.Name}"", ""{classSymbol.Name}""));
+                if (!{fieldDeserializeFuncName}(input, out var fieldValue))
+                {{
+                    throw new Exception(string.Format(""Not enough space to deserialize field {{0}} from type {{1}}."", ""{classMemberAsField.Name}"", ""{classSymbol.Name}""));
+                }}
+                value.{classMemberAsField.Name} = {fieldDeserializeTypeCast}fieldValue;
+                input = input.Slice({typeSize});
             }}
-            value.{classMemberAsField.Name} = {fieldDeserializeTypeCast}{fieldDeserializeFuncName}(input);
-            input = input.Slice({typeSize});
 ");
                     }
                     else if (classMemberAsField.Type.TypeKind == TypeKind.Class ||
