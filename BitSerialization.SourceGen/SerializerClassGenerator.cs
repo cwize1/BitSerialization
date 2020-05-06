@@ -11,7 +11,7 @@ using Microsoft.CodeAnalysis.Text;
 namespace BitSerialization.SourceGen
 {
     [Generator]
-    public class HelloWorldGenerator :
+    public class SerializerClassGenerator :
         ISourceGenerator
     {
         public void Initialize(InitializationContext context)
