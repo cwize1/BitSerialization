@@ -41,8 +41,20 @@ namespace BitSerialization.SourceGen
 
         public void Execute(SourceGeneratorContext context)
         {
+            INamedTypeSymbol bitStructAttributeSymbol = context.Compilation.GetTypeByMetadataName("BitSerialization.Common.BitStructAttribute");
+            INamedTypeSymbol bitArrayAttributeSymbol = context.Compilation.GetTypeByMetadataName("BitSerialization.Common.BitArrayAttribute");
+
+            List<INamedTypeSymbol> bitStructClasses = FindAllBitStructClasses(context, bitStructAttributeSymbol, bitArrayAttributeSymbol);
+            if (bitStructClasses == null)
+            {
+                return;
+            }
+
+            Dictionary<INamedTypeSymbol, ClassSerializeSizeInfo> classesSizeInfo = GenerateClassSizeInfo(context, bitStructClasses, bitStructAttributeSymbol, bitArrayAttributeSymbol);
+
             WritePrimitivesSerializerClass(context);
-            WriteSerializerClasses(context);
+
+            WriteSerializerClasses(context, bitStructClasses, classesSizeInfo, bitStructAttributeSymbol, bitArrayAttributeSymbol);
         }
 
         public void WritePrimitivesSerializerClass(SourceGeneratorContext context)
@@ -100,15 +112,6 @@ namespace BitSerialization.Generated
 
             string sourceCode = sourceBuilder.ToString();
             context.AddSource("BitPrimitivesSerializer.cs", SourceText.From(sourceCode, Encoding.UTF8));
-        }
-
-        private struct IntegerOrEnumTypeInfo
-        {
-            public string SerializeTypeCast;
-            public string DeserializeTypeCast;
-            public string SerializeFuncName;
-            public string DeserializeFuncName;
-            public int TypeSize;
         }
 
         private static IntegerOrEnumTypeInfo GetIntegerOrEnumTypeInfo(INamedTypeSymbol typeSymbol, BitEndianess endianess)
@@ -181,31 +184,185 @@ namespace BitSerialization.Generated
             return result;
         }
 
-        public void WriteSerializerClasses(SourceGeneratorContext context)
+        private List<INamedTypeSymbol> FindAllBitStructClasses(SourceGeneratorContext context, INamedTypeSymbol bitStructAttributeSymbol, INamedTypeSymbol bitArrayAttributeSymbol)
         {
             // retreive the populated receiver
             SyntaxReceiver receiver = context.SyntaxReceiver as SyntaxReceiver;
             if (receiver == null)
             {
-                return;
+                return null;
             }
 
-            INamedTypeSymbol bitStructAttributeSymbol = context.Compilation.GetTypeByMetadataName("BitSerialization.Common.BitStructAttribute");
-            INamedTypeSymbol bitArrayAttributeSymbol = context.Compilation.GetTypeByMetadataName("BitSerialization.Common.BitArrayAttribute");
-
+            List<INamedTypeSymbol> result = new List<INamedTypeSymbol>();
             foreach (TypeDeclarationSyntax classDeclarationSyntax in receiver.CandidateClasses)
             {
                 SemanticModel model = context.Compilation.GetSemanticModel(classDeclarationSyntax.SyntaxTree);
                 INamedTypeSymbol classSymbol = model.GetDeclaredSymbol(classDeclarationSyntax);
 
-                BitStructAttribute bitStructAttribute = SourceGenUtils.GetAttribute<BitStructAttribute>(classSymbol, bitStructAttributeSymbol);
-                if (bitStructAttribute == null)
+                if (SourceGenUtils.HasAttribute(classSymbol, bitStructAttributeSymbol))
+                {
+                    result.Add(classSymbol);
+                }
+            }
+
+            return result;
+        }
+
+        private IEnumerable<IFieldSymbol> GetClassFieldMembers(INamedTypeSymbol classSymbol)
+        {
+            foreach (ISymbol classMember in classSymbol.GetMembers())
+            {
+                IFieldSymbol classMemberAsField = classMember as IFieldSymbol;
+                if (classMemberAsField == null ||
+                    classMemberAsField.IsStatic ||
+                    classMemberAsField.IsConst)
                 {
                     continue;
                 }
 
+                yield return classMemberAsField;
+            }
+        }
+
+        private Dictionary<INamedTypeSymbol, ClassSerializeSizeInfo> GenerateClassSizeInfo(SourceGeneratorContext context, IReadOnlyList<INamedTypeSymbol> bitStructClasses,
+            INamedTypeSymbol bitStructAttributeSymbol, INamedTypeSymbol bitArrayAttributeSymbol)
+        {
+            var classesSizeInfo = new Dictionary<INamedTypeSymbol, ClassSerializeSizeInfo>();
+            foreach (INamedTypeSymbol classSymbol in bitStructClasses)
+            {
+                classesSizeInfo.Add(classSymbol, new ClassSerializeSizeInfo()
+                {
+                    Type = ClassSerializeSizeType.Dynamic,
+                    ConstSize = 0,
+                });
+            }
+
+            for (bool changed = true; changed; changed = false)
+            {
+                foreach (INamedTypeSymbol classSymbol in bitStructClasses)
+                {
+                    ClassSerializeSizeInfo classSizeInfo = new ClassSerializeSizeInfo()
+                    {
+                        Type = ClassSerializeSizeType.Const,
+                        ConstSize = 0,
+                    };
+
+                    foreach (IFieldSymbol classFieldMember in GetClassFieldMembers(classSymbol))
+                    {
+                        if (classFieldMember.Type.IsIntegerType() ||
+                            classFieldMember.Type.TypeKind == TypeKind.Enum)
+                        {
+                            INamedTypeSymbol fieldType = (INamedTypeSymbol)classFieldMember.Type;
+                            IntegerOrEnumTypeInfo fieldTypeInfo = GetIntegerOrEnumTypeInfo(fieldType, BitEndianess.LittleEndian);
+
+                            classSizeInfo.ConstSize += fieldTypeInfo.TypeSize;
+                        }
+                        else if (classFieldMember.Type.TypeKind == TypeKind.Class ||
+                            classFieldMember.Type.TypeKind == TypeKind.Struct)
+                        {
+                            if (!SourceGenUtils.HasAttribute(classFieldMember.Type, bitStructAttributeSymbol))
+                            {
+                                throw new Exception($"Type {classFieldMember.Type.Name} must have a BitStruct attribute.");
+                            }
+
+                            INamedTypeSymbol fieldType = (INamedTypeSymbol)classFieldMember.Type;
+                            ClassSerializeSizeInfo fieldTypeSizeInfo = classesSizeInfo[fieldType];
+
+                            if (fieldTypeSizeInfo.Type == ClassSerializeSizeType.Const)
+                            {
+                                classSizeInfo.ConstSize += fieldTypeSizeInfo.ConstSize;
+                            }
+                            else
+                            {
+                                classSizeInfo.Type = ClassSerializeSizeType.Dynamic;
+                            }
+                        }
+                        else if (classFieldMember.Type.TypeKind == TypeKind.Array)
+                        {
+                            IArrayTypeSymbol arrayType = (IArrayTypeSymbol)classFieldMember.Type;
+
+                            BitArrayAttribute bitArrayAttribute = SourceGenUtils.GetAttribute<BitArrayAttribute>(classFieldMember, bitArrayAttributeSymbol);
+                            if (bitArrayAttribute == null)
+                            {
+                                context.ReportDiagnostic(Diagnostic.Create(new DiagnosticDescriptor("TMP", "TMP", $"Field {classFieldMember.Name} of type {classSymbol.Name} must have a BitArray attribute.", "TMP", DiagnosticSeverity.Error, true), Location.Create("TMP", new TextSpan(), new LinePositionSpan())));
+                                continue;
+                            }
+
+                            ClassSerializeSizeInfo elementTypeSizeInfo;
+
+                            if (arrayType.ElementType.IsIntegerType() ||
+                                arrayType.ElementType.TypeKind == TypeKind.Enum)
+                            {
+                                IntegerOrEnumTypeInfo elementTypeInfo = GetIntegerOrEnumTypeInfo((INamedTypeSymbol)arrayType.ElementType, BitEndianess.LittleEndian);
+                                elementTypeSizeInfo = new ClassSerializeSizeInfo()
+                                {
+                                    Type = ClassSerializeSizeType.Const,
+                                    ConstSize = elementTypeInfo.TypeSize,
+                                };
+                            }
+                            else if (arrayType.ElementType.TypeKind == TypeKind.Class ||
+                                arrayType.ElementType.TypeKind == TypeKind.Struct)
+                            {
+                                INamedTypeSymbol elementType = (INamedTypeSymbol)arrayType.ElementType;
+                                elementTypeSizeInfo = classesSizeInfo[elementType];
+                            }
+                            else
+                            {
+                                context.ReportDiagnostic(Diagnostic.Create(new DiagnosticDescriptor("TMP", "TMP", $"Can't serialize type of {arrayType.ElementType.Name}.", "TMP", DiagnosticSeverity.Error, true), Location.Create("TMP", new TextSpan(), new LinePositionSpan())));
+                                continue;
+                            }
+
+                            switch (bitArrayAttribute.SizeType)
+                            {
+                            case BitArraySizeType.Const:
+                                if (elementTypeSizeInfo.Type == ClassSerializeSizeType.Dynamic)
+                                {
+                                    classSizeInfo.Type = ClassSerializeSizeType.Dynamic;
+                                }
+                                else
+                                {
+                                    classSizeInfo.ConstSize += elementTypeSizeInfo.ConstSize * bitArrayAttribute.ConstSize;
+                                }
+                                break;
+
+                            case BitArraySizeType.EndFill:
+                                classSizeInfo.Type = ClassSerializeSizeType.Dynamic;
+                                break;
+
+                            default:
+                                context.ReportDiagnostic(Diagnostic.Create(new DiagnosticDescriptor("TMP", "TMP", $"Unknown BitArraySizeType value of {bitArrayAttribute.SizeType}.", "TMP", DiagnosticSeverity.Error, true), Location.Create("TMP", new TextSpan(), new LinePositionSpan())));
+                                continue;
+                            }
+                        }
+                        else
+                        {
+                            context.ReportDiagnostic(Diagnostic.Create(new DiagnosticDescriptor("TMP", "TMP", $"Can't serialize type of {classSymbol.Name}.", "TMP", DiagnosticSeverity.Error, true), Location.Create("TMP", new TextSpan(), new LinePositionSpan())));
+                            continue;
+                        }
+                    }
+
+                    if (classSizeInfo != classesSizeInfo[classSymbol])
+                    {
+                        classesSizeInfo[classSymbol] = classSizeInfo;
+                        changed = true;
+                    }
+                }
+            }
+
+            return classesSizeInfo;
+        }
+
+        private void WriteSerializerClasses(SourceGeneratorContext context, List<INamedTypeSymbol> bitStructClasses, Dictionary<INamedTypeSymbol, ClassSerializeSizeInfo> classesSizeInfo,
+            INamedTypeSymbol bitStructAttributeSymbol, INamedTypeSymbol bitArrayAttributeSymbol)
+        {
+            foreach (INamedTypeSymbol classSymbol in bitStructClasses)
+            {
+                ClassSerializeSizeInfo classSizeInfo = classesSizeInfo[classSymbol];
+
                 string classFullName = SourceGenUtils.GetTypeFullName(classSymbol);
                 string serializerClassName = CreateSerializerName(classSymbol);
+
+                BitStructAttribute bitStructAttribute = SourceGenUtils.GetAttribute<BitStructAttribute>(classSymbol, bitStructAttributeSymbol);
 
                 var sourceBuilder = new StringBuilder();
                 sourceBuilder.Append($@"
@@ -215,8 +372,22 @@ namespace {classSymbol.ContainingNamespace}
     {{
 ");
 
+                var sizeFuncBuilder = new StringBuilder();
                 var serializeFuncBuilder = new StringBuilder();
                 var deserializeFuncBuilder = new StringBuilder();
+
+                if (classSizeInfo.Type == ClassSerializeSizeType.Const)
+                {
+                    sizeFuncBuilder.Append($@"
+        public const int Size = {classSizeInfo.ConstSize};
+");
+                }
+
+                sizeFuncBuilder.Append($@"
+        public static int CalculateSize({classFullName} value)
+        {{
+            int result = {classSizeInfo.ConstSize};
+");
 
                 serializeFuncBuilder.Append($@"
         public static global::System.Span<byte> Serialize(global::System.Span<byte> output, {classFullName} value)
@@ -229,27 +400,18 @@ namespace {classSymbol.ContainingNamespace}
             value = new {classFullName}();
 ");
 
-                foreach (ISymbol classMember in classSymbol.GetMembers())
+                foreach (IFieldSymbol classFieldMember in GetClassFieldMembers(classSymbol))
                 {
-                    IFieldSymbol classMemberAsField = classMember as IFieldSymbol;
-                    if (classMemberAsField == null ||
-                        classMemberAsField.IsStatic ||
-                        classMemberAsField.IsConst)
+                    if (classFieldMember.Type.IsIntegerType() ||
+                        classFieldMember.Type.TypeKind == TypeKind.Enum)
                     {
-                        continue;
-                    }
-
-                    if (classMemberAsField.Type.IsIntegerType() ||
-                        classMemberAsField.Type.TypeKind == TypeKind.Enum)
-                    {
-                        INamedTypeSymbol fieldType = (INamedTypeSymbol)classMemberAsField.Type;
-
+                        INamedTypeSymbol fieldType = (INamedTypeSymbol)classFieldMember.Type;
                         IntegerOrEnumTypeInfo fieldTypeInfo = GetIntegerOrEnumTypeInfo(fieldType, bitStructAttribute.Endianess);
 
                         serializeFuncBuilder.Append($@"
-            if (!{fieldTypeInfo.SerializeFuncName}(output, {fieldTypeInfo.SerializeTypeCast}value.{classMemberAsField.Name}))
+            if (!{fieldTypeInfo.SerializeFuncName}(output, {fieldTypeInfo.SerializeTypeCast}value.{classFieldMember.Name}))
             {{
-                throw new global::System.Exception(string.Format(""Not enough space to serialize field {{0}} from type {{1}}."", ""{classMemberAsField.Name}"", ""{classSymbol.Name}""));
+                throw new global::System.Exception(string.Format(""Not enough space to serialize field {{0}} from type {{1}}."", ""{classFieldMember.Name}"", ""{classSymbol.Name}""));
             }}
             output = output.Slice({fieldTypeInfo.TypeSize});
 ");
@@ -258,60 +420,76 @@ namespace {classSymbol.ContainingNamespace}
             {{
                 if (!{fieldTypeInfo.DeserializeFuncName}(input, out var fieldValue))
                 {{
-                    throw new global::System.Exception(string.Format(""Not enough data to deserialize field {{0}} from type {{1}}."", ""{classMemberAsField.Name}"", ""{classSymbol.Name}""));
+                    throw new global::System.Exception(string.Format(""Not enough data to deserialize field {{0}} from type {{1}}."", ""{classFieldMember.Name}"", ""{classSymbol.Name}""));
                 }}
-                value.{classMemberAsField.Name} = {fieldTypeInfo.DeserializeTypeCast}fieldValue;
+                value.{classFieldMember.Name} = {fieldTypeInfo.DeserializeTypeCast}fieldValue;
                 input = input.Slice({fieldTypeInfo.TypeSize});
             }}
 ");
                     }
-                    else if (classMemberAsField.Type.TypeKind == TypeKind.Class ||
-                        classMemberAsField.Type.TypeKind == TypeKind.Struct)
+                    else if (classFieldMember.Type.TypeKind == TypeKind.Class ||
+                        classFieldMember.Type.TypeKind == TypeKind.Struct)
                     {
-                        if (SourceGenUtils.GetAttributeData(classMemberAsField.Type, bitStructAttributeSymbol) == null)
+                        if (!SourceGenUtils.HasAttribute(classFieldMember.Type, bitStructAttributeSymbol))
                         {
-                            throw new Exception($"Type {classMemberAsField.Type.Name} must have a BitStruct attribute.");
+                            continue;
                         }
 
-                        string serializerClassFullName = CreateSerializerFullName((INamedTypeSymbol)classMemberAsField.Type);
+                        INamedTypeSymbol fieldType = (INamedTypeSymbol)classFieldMember.Type;
+                        ClassSerializeSizeInfo fieldTypeSizeInfo = classesSizeInfo[fieldType];
+
+                        string serializerClassFullName = CreateSerializerFullName(fieldType);
+
+                        if (fieldTypeSizeInfo.Type == ClassSerializeSizeType.Dynamic)
+                        {
+                            sizeFuncBuilder.Append($@"
+            result += {serializerClassFullName}.CalculateSize(value.{classFieldMember.Name});
+");
+                        }
 
                         serializeFuncBuilder.Append($@"
-            output = {serializerClassFullName}.Serialize(output, value.{classMemberAsField.Name});
+            output = {serializerClassFullName}.Serialize(output, value.{classFieldMember.Name});
 ");
 
                         deserializeFuncBuilder.Append($@"
             {{
                 input = {serializerClassFullName}.Deserialize(input, out var fieldValue);
-                value.{classMemberAsField.Name} = fieldValue;
+                value.{classFieldMember.Name} = fieldValue;
             }}
 ");
                     }
-                    else if (classMemberAsField.Type.TypeKind == TypeKind.Array)
+                    else if (classFieldMember.Type.TypeKind == TypeKind.Array)
                     {
-                        var attributeData = SourceGenUtils.GetAttributeData(classMemberAsField, bitArrayAttributeSymbol);
-
-                        BitArrayAttribute bitArrayAttribute = SourceGenUtils.GetAttribute<BitArrayAttribute>(classMemberAsField, bitArrayAttributeSymbol);
+                        BitArrayAttribute bitArrayAttribute = SourceGenUtils.GetAttribute<BitArrayAttribute>(classFieldMember, bitArrayAttributeSymbol);
                         if (bitArrayAttribute == null)
                         {
-                            context.ReportDiagnostic(Diagnostic.Create(new DiagnosticDescriptor("TMP", "TMP", $"Field {classMemberAsField.Name} of type {classSymbol.Name} must have a BitArray attribute.", "TMP", DiagnosticSeverity.Error, true), Location.Create("TMP", new TextSpan(), new LinePositionSpan())));
                             continue;
                         }
 
-                        IArrayTypeSymbol arrayType = (IArrayTypeSymbol)classMemberAsField.Type;
+                        IArrayTypeSymbol arrayType = (IArrayTypeSymbol)classFieldMember.Type;
                         string elementTypeFullName = SourceGenUtils.GetTypeFullName(arrayType.ElementType);
 
-                        string serializeItem = string.Empty;
-                        string deserializeItem = string.Empty;
+                        ClassSerializeSizeInfo elementTypeSizeInfo;
+                        string calculateElementSize = null;
+                        string serializeItem;
+                        string deserializeItem;
 
                         if (arrayType.ElementType.IsIntegerType() ||
                             arrayType.ElementType.TypeKind == TypeKind.Enum)
                         {
                             IntegerOrEnumTypeInfo elementTypeInfo = GetIntegerOrEnumTypeInfo((INamedTypeSymbol)arrayType.ElementType, bitStructAttribute.Endianess);
+                            elementTypeSizeInfo = new ClassSerializeSizeInfo()
+                            {
+                                Type = ClassSerializeSizeType.Const,
+                                ConstSize = elementTypeInfo.TypeSize,
+                            };
+
+                            calculateElementSize = $"result += {elementTypeInfo.TypeSize}";
 
                             serializeItem = $@"
                         if (!{elementTypeInfo.SerializeFuncName}(output, {elementTypeInfo.SerializeTypeCast}item))
                         {{
-                            throw new global::System.Exception(string.Format(""Not enough space to serialize item from list {{0}} from type {{1}}."", ""{classMemberAsField.Name}"", ""{classSymbol.Name}""));
+                            throw new global::System.Exception(string.Format(""Not enough space to serialize item from list {{0}} from type {{1}}."", ""{classFieldMember.Name}"", ""{classSymbol.Name}""));
                         }}
                         output = output.Slice({elementTypeInfo.TypeSize});
 ";
@@ -319,7 +497,7 @@ namespace {classSymbol.ContainingNamespace}
                             deserializeItem = $@"
                         if (!{elementTypeInfo.DeserializeFuncName}(input, out var item))
                         {{
-                            throw new global::System.Exception(string.Format(""Not enough data to deserialize item from list {{0}} from type {{1}}."", ""{classMemberAsField.Name}"", ""{classSymbol.Name}""));
+                            throw new global::System.Exception(string.Format(""Not enough data to deserialize item from list {{0}} from type {{1}}."", ""{classFieldMember.Name}"", ""{classSymbol.Name}""));
                         }}
                         input = input.Slice({elementTypeInfo.TypeSize});
 ";
@@ -327,25 +505,70 @@ namespace {classSymbol.ContainingNamespace}
                         else if (arrayType.ElementType.TypeKind == TypeKind.Class ||
                             arrayType.ElementType.TypeKind == TypeKind.Struct)
                         {
-                            string elementSerializerClassFullName = CreateSerializerFullName((INamedTypeSymbol)arrayType.ElementType);
+                            INamedTypeSymbol elementType = (INamedTypeSymbol)arrayType.ElementType;
+                            elementTypeSizeInfo = classesSizeInfo[elementType];
+
+                            string elementSerializerClassFullName = CreateSerializerFullName(elementType);
+
+                            if (elementTypeSizeInfo.Type == ClassSerializeSizeType.Const)
+                            {
+                                calculateElementSize = $@"result += {elementSerializerClassFullName}.Size;";
+                            }
+                            else
+                            {
+                                calculateElementSize = $@"result += {elementSerializerClassFullName}.CalculateSize(item);";
+                            }
+
                             serializeItem = $@"output = {elementSerializerClassFullName}.Serialize(output, item);";
                             deserializeItem = $@"input = {elementSerializerClassFullName}.Deserialize(input, out var item);";
                         }
                         else
                         {
-                            //throw new Exception($"Can't serialize type {arrayType.ElementType.Name}.");
+                            continue;
                         }
 
                         switch (bitArrayAttribute.SizeType)
                         {
                         case BitArraySizeType.Const:
-                            serializeFuncBuilder.Append($@"
+                            if (elementTypeSizeInfo.Type == ClassSerializeSizeType.Dynamic)
+                            {
+                                sizeFuncBuilder.Append($@"
             {{
-                var array = value.{classMemberAsField.Name};
+                var array = value.{classFieldMember.Name};
                 int collectionCount = array?.Length ?? 0;
                 if (collectionCount > {bitArrayAttribute.ConstSize})
                 {{
-                    throw new global::System.Exception(string.Format($""Constant size list {{0}} from type {{1}} has too many items."", ""{classMemberAsField.Name}"", ""{classSymbol.Name}""));
+                    throw new global::System.Exception(string.Format($""Constant size list {{0}} from type {{1}} has too many items."", ""{classFieldMember.Name}"", ""{classSymbol.Name}""));
+                }}
+
+                if (array != null)
+                {{
+                    foreach (var item in array)
+                    {{
+                        {calculateElementSize}
+                    }}
+                }}
+
+                int backfillCount = {bitArrayAttribute.ConstSize} - collectionCount;
+                if (backfillCount > 0)
+                {{
+                    {elementTypeFullName} item = default;
+                    for (int i = 0; i != backfillCount; ++i)
+                    {{
+                        {calculateElementSize}
+                    }}
+                }}
+            }}
+");
+                            }
+
+                            serializeFuncBuilder.Append($@"
+            {{
+                var array = value.{classFieldMember.Name};
+                int collectionCount = array?.Length ?? 0;
+                if (collectionCount > {bitArrayAttribute.ConstSize})
+                {{
+                    throw new global::System.Exception(string.Format($""Constant size list {{0}} from type {{1}} has too many items."", ""{classFieldMember.Name}"", ""{classSymbol.Name}""));
                 }}
 
                 if (array != null)
@@ -378,16 +601,29 @@ namespace {classSymbol.ContainingNamespace}
                     array[i] = item;
                 }}
 
-                value.{classMemberAsField.Name} = array;
+                value.{classFieldMember.Name} = array;
             }}
 ");
 
                             break;
 
                         case BitArraySizeType.EndFill:
+                            sizeFuncBuilder.Append($@"
+            {{
+                var array = value.{classFieldMember.Name};
+                if (array != null)
+                {{
+                    foreach (var item in array)
+                    {{
+                        {calculateElementSize}
+                    }}
+                }}
+            }}
+");
+
                             serializeFuncBuilder.Append($@"
             {{
-                var array = value.{classMemberAsField.Name};
+                var array = value.{classFieldMember.Name};
                 if (array != null)
                 {{
                     foreach (var item in array)
@@ -406,20 +642,27 @@ namespace {classSymbol.ContainingNamespace}
                     list.Add(item);
                 }}
 
-                value.{classMemberAsField.Name} = list.ToArray();
+                value.{classFieldMember.Name} = list.ToArray();
 ");
 
                             break;
 
                         default:
-                            throw new Exception($"Unknown BitArraySizeType value of {bitArrayAttribute.SizeType}");
+                            // Unknown BitArraySizeType.
+                            continue;
                         }
                     }
                     else
                     {
-                        //throw new Exception($"Can't serialize type {classMemberAsField.Type.Name}.");
+                        // Can't serialize type.
+                        continue;
                     }
                 }
+
+                sizeFuncBuilder.Append($@"
+            return result;
+        }}
+");
 
                 serializeFuncBuilder.Append($@"
             return output;
@@ -431,6 +674,7 @@ namespace {classSymbol.ContainingNamespace}
         }}
 ");
 
+                sourceBuilder.Append(sizeFuncBuilder.ToString());
                 sourceBuilder.Append(serializeFuncBuilder.ToString());
                 sourceBuilder.Append(deserializeFuncBuilder.ToString());
                 sourceBuilder.Append($@"

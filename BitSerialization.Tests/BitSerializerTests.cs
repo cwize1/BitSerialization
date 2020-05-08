@@ -40,6 +40,9 @@ namespace BitSerialization.Tests
                 H = -8,
             };
 
+            Assert.Equal(BasicStruct.Size, BitSerializerTests_BasicStructSerializer.Size);
+            Assert.Equal(BasicStruct.Size, BitSerializerTests_BasicStructSerializer.CalculateSize(value));
+
             byte[] output1 = new byte[BasicStruct.Size];
             BitSerializer.Serialize(value, output1);
 
@@ -104,6 +107,9 @@ namespace BitSerialization.Tests
                 G = new ulong[] { 13, 14 },
                 H = new long[] { -15, -16 },
             };
+
+            Assert.Equal(PrimitiveConstArraysStruct.Size, BitSerializerTests_PrimitiveConstArraysStructSerializer.Size);
+            Assert.Equal(PrimitiveConstArraysStruct.Size, BitSerializerTests_PrimitiveConstArraysStructSerializer.CalculateSize(value));
 
             byte[] output1 = new byte[PrimitiveConstArraysStruct.Size];
             BitSerializer.Serialize(value, output1);

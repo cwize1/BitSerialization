@@ -53,6 +53,11 @@ namespace BitSerialization.SourceGen
             return result;
         }
 
+        public static bool HasAttribute(ISymbol symbol, INamedTypeSymbol attributeSymbol)
+        {
+            return symbol.GetAttributes().Any((ad) => ad.AttributeClass.Equals(attributeSymbol, SymbolEqualityComparer.Default));
+        }
+
         public static AttributeData GetAttributeData(ISymbol symbol, INamedTypeSymbol attributeSymbol)
         {
             return symbol.GetAttributes().FirstOrDefault((ad) => ad.AttributeClass.Equals(attributeSymbol, SymbolEqualityComparer.Default));
