@@ -9,12 +9,12 @@ using System.Runtime.CompilerServices;
 
 namespace BitSerialization.Reflection.PreCalculated
 {
-    public static class BitSerializerStruct<T>
+    public static class BitSerializer<T>
         where T : struct
     {
         private static readonly FieldSerializationData[] _Playbook;
 
-        static BitSerializerStruct()
+        static BitSerializer()
         {
             Type type = typeof(T);
 
@@ -129,7 +129,7 @@ namespace BitSerialization.Reflection.PreCalculated
                 else if (fieldInfo.FieldType.IsStruct() ||
                     fieldInfo.FieldType.IsClass)
                 {
-                    Type bitSerializerStructType = typeof(BitSerializerStruct<>).MakeGenericType(fieldInfo.FieldType);
+                    Type bitSerializerStructType = typeof(BitSerializer<>).MakeGenericType(fieldInfo.FieldType);
 
                     deserializeFunc = (DeserializeFieldHandler)bitSerializerStructType.GetMethod(nameof(DeserializeField)).CreateDelegate(typeof(DeserializeFieldHandler));
                     serializeFunc = (SerializeFieldHandler)bitSerializerStructType.GetMethod(nameof(SerializeField)).CreateDelegate(typeof(SerializeFieldHandler));

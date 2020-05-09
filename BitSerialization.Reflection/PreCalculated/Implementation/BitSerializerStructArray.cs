@@ -14,12 +14,12 @@ namespace BitSerialization.Reflection.PreCalculated.Implementation
 
         protected override ReadOnlySpan<byte> DeserializeItem(ReadOnlySpan<byte> itr, out T value)
         {
-            return BitSerializerStruct<T>.Deserialize(itr, out value);
+            return BitSerializer<T>.Deserialize(itr, out value);
         }
 
         protected override Span<byte> SerializeItem(Span<byte> itr, in T value)
         {
-            return BitSerializerStruct<T>.Serialize(itr, in value);
+            return BitSerializer<T>.Serialize(itr, in value);
         }
     }
 }

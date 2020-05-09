@@ -63,7 +63,7 @@ namespace BitSerialization.Tests
             BitSerializer.Serialize(value, output1);
 
             byte[] output2 = new byte[expectedSerializeSize];
-            BitSerializerStruct<T>.Serialize(output2, value);
+            BitSerializer<T>.Serialize(output2, value);
 
             byte[] output3 = new byte[expectedSerializeSize];
             serializeFunc(output3, value);
@@ -75,7 +75,7 @@ namespace BitSerialization.Tests
             BitSerializer.Deserialize(output1, out value1);
 
             T value2;
-            BitSerializerStruct<T>.Deserialize(output2, out value2);
+            BitSerializer<T>.Deserialize(output2, out value2);
 
             T value3;
             deserializeFunc(output3, out value3);
