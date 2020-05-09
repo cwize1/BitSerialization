@@ -60,7 +60,8 @@ namespace BitSerialization.Common
                         throw new Exception($"Cannot serialize a pure array of array for field {fieldInfo.Name} of type {type.Name}. Use a wrapper struct instead.");
                     }
                     else if (elementType.IsStruct() ||
-                        elementType.IsPrimitive)
+                        elementType.IsPrimitive ||
+                        elementType.IsEnum)
                     {
                         Type? arraySerializerType = null;
 
@@ -70,21 +71,30 @@ namespace BitSerialization.Common
                         }
                         else
                         {
+                            Type elementUnderlyingType = elementType.IsEnum ?
+                                elementType.GetEnumUnderlyingType() :
+                                elementType;
+
                             Dictionary<Type, BitSerializerPrimitives.TypeData> types = structAttribute.Endianess == BitEndianess.BigEndian ?
                                 BitSerializerPrimitives.BigEndianTypes :
                                 BitSerializerPrimitives.LittleEndianTypes;
 
-                            if (types.TryGetValue(elementType, out var typeData))
+                            if (types.TryGetValue(elementUnderlyingType, out var typeData))
                             {
                                 arraySerializerType = typeData.ArraySerializerType;
+
+                                if (elementType.IsEnum)
+                                {
+                                    arraySerializerType = arraySerializerType.GetGenericTypeDefinition().MakeGenericType(elementType);
+                                }
                             }
                         }
 
                         if (arraySerializerType != null)
                         {
                             object arraySerializer = Activator.CreateInstance(arraySerializerType, arrayAttribute)!;
-                            deserializeFunc = (DeserializeFieldHandler)arraySerializerType.GetMethod(nameof(BitSerializerStructArray<int>.DeserializeField), BindingFlags.Instance | BindingFlags.Public)!.CreateDelegate(typeof(DeserializeFieldHandler), arraySerializer);
-                            serializeFunc = (SerializeFieldHandler)arraySerializerType.GetMethod(nameof(BitSerializerStructArray<int>.SerializeField), BindingFlags.Instance | BindingFlags.Public)!.CreateDelegate(typeof(SerializeFieldHandler), arraySerializer);
+                            deserializeFunc = (DeserializeFieldHandler)arraySerializerType.GetMethod(nameof(BitSerializerArray<int>.DeserializeField), BindingFlags.Instance | BindingFlags.Public)!.CreateDelegate(typeof(DeserializeFieldHandler), arraySerializer);
+                            serializeFunc = (SerializeFieldHandler)arraySerializerType.GetMethod(nameof(BitSerializerArray<int>.SerializeField), BindingFlags.Instance | BindingFlags.Public)!.CreateDelegate(typeof(SerializeFieldHandler), arraySerializer);
                             handled = true;
                         }
                     }
@@ -92,7 +102,7 @@ namespace BitSerialization.Common
                 else if (fieldInfo.FieldType.IsEnum ||
                     fieldInfo.FieldType.IsPrimitive)
                 {
-                    Type fieldType = fieldInfo.FieldType.IsEnum ?
+                    Type fieldUnderlyingType = fieldInfo.FieldType.IsEnum ?
                         fieldInfo.FieldType.GetEnumUnderlyingType() :
                         fieldInfo.FieldType;
 
@@ -100,7 +110,7 @@ namespace BitSerialization.Common
                         BitSerializerPrimitives.BigEndianTypes :
                         BitSerializerPrimitives.LittleEndianTypes;
 
-                    if (types.TryGetValue(fieldType, out var typeData))
+                    if (types.TryGetValue(fieldUnderlyingType, out var typeData))
                     {
                         deserializeFunc = typeData.DeserializeFunc;
                         serializeFunc = typeData.SerializeFunc;

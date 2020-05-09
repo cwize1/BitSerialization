@@ -484,7 +484,7 @@ namespace {classSymbol.ContainingNamespace}
                                 ConstSize = elementTypeInfo.TypeSize,
                             };
 
-                            calculateElementSize = $"result += {elementTypeInfo.TypeSize}";
+                            calculateElementSize = $"result += {elementTypeInfo.TypeSize};";
 
                             serializeItem = $@"
                         if (!{elementTypeInfo.SerializeFuncName}(output, {elementTypeInfo.SerializeTypeCast}item))
@@ -495,10 +495,11 @@ namespace {classSymbol.ContainingNamespace}
 ";
 
                             deserializeItem = $@"
-                        if (!{elementTypeInfo.DeserializeFuncName}(input, out var item))
+                        if (!{elementTypeInfo.DeserializeFuncName}(input, out var tmp))
                         {{
                             throw new global::System.Exception(string.Format(""Not enough data to deserialize item from list {{0}} from type {{1}}."", ""{classFieldMember.Name}"", ""{classSymbol.Name}""));
                         }}
+                        var item = {elementTypeInfo.DeserializeTypeCast}tmp;
                         input = input.Slice({elementTypeInfo.TypeSize});
 ";
                         }

@@ -31,27 +31,32 @@ namespace BitSerialization.Common.Implementation
 
         public static readonly Dictionary<Type, TypeData> LittleEndianTypes = new Dictionary<Type, TypeData>()
         {
-            { typeof(byte), new TypeData(DeserializeUInt8Field<byte>, SerializeUInt8Field, typeof(BitSerializerUInt8Array)) },
-            { typeof(sbyte), new TypeData(DeserializeInt8Field<sbyte>, SerializeInt8Field, typeof(BitSerializerInt8Array)) },
-            { typeof(ushort), new TypeData(DeserializeUInt16LittleEndianField<ushort>, SerializeUInt16LittleEndianField, typeof(BitSerializerUInt16LittleEndianArray)) },
-            { typeof(short), new TypeData(DeserializeInt16LittleEndianField<short>, SerializeInt16LittleEndianField, typeof(BitSerializerInt16LittleEndianArray)) },
-            { typeof(uint), new TypeData(DeserializeUInt32LittleEndianField<uint>, SerializeUInt32LittleEndianField, typeof(BitSerializerUInt32LittleEndianArray)) },
-            { typeof(int), new TypeData(DeserializeInt32LittleEndianField<int>, SerializeInt32LittleEndianField, typeof(BitSerializerInt32LittleEndianArray)) },
-            { typeof(ulong), new TypeData(DeserializeUInt64LittleEndianField<ulong>, SerializeUInt64LittleEndianField, typeof(BitSerializerUInt64LittleEndianArray)) },
-            { typeof(long), new TypeData(DeserializeInt64LittleEndianField<long>, SerializeInt64LittleEndianField, typeof(BitSerializerInt64LittleEndianArray)) },
+            { typeof(byte), new TypeData(DeserializeUInt8Field<byte>, SerializeUInt8Field, typeof(BitSerializerUInt8Array<byte>)) },
+            { typeof(sbyte), new TypeData(DeserializeInt8Field<sbyte>, SerializeInt8Field, typeof(BitSerializerInt8Array<sbyte>)) },
+            { typeof(ushort), new TypeData(DeserializeUInt16LittleEndianField<ushort>, SerializeUInt16LittleEndianField, typeof(BitSerializerUInt16LittleEndianArray<ushort>)) },
+            { typeof(short), new TypeData(DeserializeInt16LittleEndianField<short>, SerializeInt16LittleEndianField, typeof(BitSerializerInt16LittleEndianArray<short>)) },
+            { typeof(uint), new TypeData(DeserializeUInt32LittleEndianField<uint>, SerializeUInt32LittleEndianField, typeof(BitSerializerUInt32LittleEndianArray<uint>)) },
+            { typeof(int), new TypeData(DeserializeInt32LittleEndianField<int>, SerializeInt32LittleEndianField, typeof(BitSerializerInt32LittleEndianArray<int>)) },
+            { typeof(ulong), new TypeData(DeserializeUInt64LittleEndianField<ulong>, SerializeUInt64LittleEndianField, typeof(BitSerializerUInt64LittleEndianArray<ulong>)) },
+            { typeof(long), new TypeData(DeserializeInt64LittleEndianField<long>, SerializeInt64LittleEndianField, typeof(BitSerializerInt64LittleEndianArray<long>)) },
         };
 
         public static readonly Dictionary<Type, TypeData> BigEndianTypes = new Dictionary<Type, TypeData>()
         {
-            { typeof(byte), new TypeData(DeserializeUInt8Field<byte>, SerializeUInt8Field, typeof(BitSerializerUInt8Array)) },
-            { typeof(sbyte), new TypeData(DeserializeInt8Field<sbyte>, SerializeInt8Field, typeof(BitSerializerInt8Array)) },
-            { typeof(ushort), new TypeData(DeserializeUInt16BigEndianField<ushort>, SerializeUInt16BigEndianField, typeof(BitSerializerUInt16BigEndianArray)) },
-            { typeof(short), new TypeData(DeserializeInt16BigEndianField<short>, SerializeInt16BigEndianField, typeof(BitSerializerInt16BigEndianArray)) },
-            { typeof(uint), new TypeData(DeserializeUInt32BigEndianField<uint>, SerializeUInt32BigEndianField, typeof(BitSerializerUInt32BigEndianArray)) },
-            { typeof(int), new TypeData(DeserializeInt32BigEndianField<int>, SerializeInt32BigEndianField, typeof(BitSerializerInt32BigEndianArray)) },
-            { typeof(ulong), new TypeData(DeserializeUInt64BigEndianField<ulong>, SerializeUInt64BigEndianField, typeof(BitSerializerUInt64BigEndianArray)) },
-            { typeof(long), new TypeData(DeserializeInt64BigEndianField<long>, SerializeInt64BigEndianField, typeof(BitSerializerInt64BigEndianArray)) },
+            { typeof(byte), new TypeData(DeserializeUInt8Field<byte>, SerializeUInt8Field, typeof(BitSerializerUInt8Array<byte>)) },
+            { typeof(sbyte), new TypeData(DeserializeInt8Field<sbyte>, SerializeInt8Field, typeof(BitSerializerInt8Array<sbyte>)) },
+            { typeof(ushort), new TypeData(DeserializeUInt16BigEndianField<ushort>, SerializeUInt16BigEndianField, typeof(BitSerializerUInt16BigEndianArray<ushort>)) },
+            { typeof(short), new TypeData(DeserializeInt16BigEndianField<short>, SerializeInt16BigEndianField, typeof(BitSerializerInt16BigEndianArray<short>)) },
+            { typeof(uint), new TypeData(DeserializeUInt32BigEndianField<uint>, SerializeUInt32BigEndianField, typeof(BitSerializerUInt32BigEndianArray<uint>)) },
+            { typeof(int), new TypeData(DeserializeInt32BigEndianField<int>, SerializeInt32BigEndianField, typeof(BitSerializerInt32BigEndianArray<int>)) },
+            { typeof(ulong), new TypeData(DeserializeUInt64BigEndianField<ulong>, SerializeUInt64BigEndianField, typeof(BitSerializerUInt64BigEndianArray<ulong>)) },
+            { typeof(long), new TypeData(DeserializeInt64BigEndianField<long>, SerializeInt64BigEndianField, typeof(BitSerializerInt64BigEndianArray<long>)) },
         };
+
+        public static ToType HardCast<FromType, ToType>(FromType value)
+        {
+            return Unsafe.As<FromType, ToType>(ref value);
+        }
 
         public static ReadOnlySpan<byte> DeserializeUInt8(ReadOnlySpan<byte> source, out byte value)
         {
