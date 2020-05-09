@@ -3,6 +3,7 @@ using BitSerialization.Reflection.OnTheFly;
 using BitSerialization.Reflection.PreCalculated;
 using KellermanSoftware.CompareNetObjects;
 using System;
+using System.Drawing;
 using System.Runtime.InteropServices;
 using Xunit;
 
@@ -356,6 +357,80 @@ namespace BitSerialization.Tests
                 EnumEndFillArrayStructSerializer.CalculateSize,
                 EnumEndFillArrayStructSerializer.Serialize,
                 EnumEndFillArrayStructSerializer.Deserialize);
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        [BitStruct]
+        internal struct WithStructVariableStruct
+        {
+            public const int Size = BasicStruct.Size;
+
+            public BasicStruct A;
+        }
+
+        [Fact]
+        public void WithStructVariable()
+        {
+            WithStructVariableStruct value = new WithStructVariableStruct()
+            {
+                A = new BasicStruct()
+                {
+                    A = 1,
+                    B = 2,
+                },
+            };
+
+            CheckSerializers(
+                value,
+                WithStructVariableStruct.Size,
+                WithStructVariableStructSerializer.Size,
+                WithStructVariableStructSerializer.CalculateSize,
+                WithStructVariableStructSerializer.Serialize,
+                WithStructVariableStructSerializer.Deserialize);
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        [BitStruct]
+        internal struct ArrayOfStructStruct
+        {
+            public const int Size = BasicStruct.Size * 3;
+
+            [BitArray(BitArraySizeType.Const, ConstSize = 3)]
+            public BasicStruct[]? A;
+        }
+
+        [Fact]
+        public void ArrayOfStruct()
+        {
+            ArrayOfStructStruct value = new ArrayOfStructStruct()
+            {
+                A = new BasicStruct[]
+                {
+                    new BasicStruct()
+                    {
+                        A = 1,
+                        B = 2,
+                    },
+                        new BasicStruct()
+                    {
+                        C = 3,
+                        D = 4,
+                    },
+                    new BasicStruct()
+                    {
+                        E = 5,
+                        F = 6,
+                    }
+                },
+            };
+
+            CheckSerializers(
+                value,
+                ArrayOfStructStruct.Size,
+                ArrayOfStructStructSerializer.Size,
+                ArrayOfStructStructSerializer.CalculateSize,
+                ArrayOfStructStructSerializer.Serialize,
+                ArrayOfStructStructSerializer.Deserialize);
         }
     }
 }

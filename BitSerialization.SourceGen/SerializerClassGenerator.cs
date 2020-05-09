@@ -730,7 +730,7 @@ namespace {classSymbol.ContainingNamespace}
 
         private static string CreateSerializerFullName(INamedTypeSymbol classSymbol)
         {
-            return $"global::{SourceGenUtils.GetTypeNamespace(classSymbol)}.{CreateSerializerName(classSymbol)}";
+            return $"{SourceGenUtils.GetTypeNamespace(classSymbol)}.{CreateSerializerName(classSymbol)}";
         }
     }
 }
