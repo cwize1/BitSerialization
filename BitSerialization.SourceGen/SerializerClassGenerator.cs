@@ -457,7 +457,8 @@ namespace {classSymbol.ContainingNamespace}
                     {
                         if (!SourceGenUtils.HasAttribute(classFieldMember.Type, bitStructAttributeSymbol))
                         {
-                            continue;
+                            // Type requires BitStruct attribute.
+                            return;
                         }
 
                         INamedTypeSymbol fieldType = (INamedTypeSymbol)classFieldMember.Type;
@@ -488,14 +489,15 @@ namespace {classSymbol.ContainingNamespace}
                         BitArrayAttribute bitArrayAttribute = SourceGenUtils.GetAttribute<BitArrayAttribute>(classFieldMember, bitArrayAttributeSymbol);
                         if (bitArrayAttribute == null)
                         {
-                            continue;
+                            // Type requires BitArray attribute.
+                            return;
                         }
 
                         IArrayTypeSymbol arrayType = (IArrayTypeSymbol)classFieldMember.Type;
                         string elementTypeFullName = SourceGenUtils.GetTypeFullName(arrayType.ElementType);
 
                         ClassSerializeSizeInfo elementTypeSizeInfo;
-                        string calculateElementSize = null;
+                        string calculateElementSize;
                         string serializeItem;
                         string deserializeItem;
 
@@ -550,7 +552,8 @@ namespace {classSymbol.ContainingNamespace}
                         }
                         else
                         {
-                            continue;
+                            // Can't serialize type.
+                            return;
                         }
 
                         switch (bitArrayAttribute.SizeType)
@@ -675,13 +678,13 @@ namespace {classSymbol.ContainingNamespace}
 
                         default:
                             // Unknown BitArraySizeType.
-                            continue;
+                            return;
                         }
                     }
                     else
                     {
                         // Can't serialize type.
-                        continue;
+                        return;
                     }
                 }
 
