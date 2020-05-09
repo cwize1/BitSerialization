@@ -127,6 +127,34 @@ namespace BitSerialization.Tests
 
         [StructLayout(LayoutKind.Sequential)]
         [BitStruct]
+        internal struct BasicWithEnumsStruct
+        {
+            public const int Size = 5;
+
+            public EnumOfByte A;
+            public EnumOfInt B;
+        }
+
+        [Fact]
+        public void BasicWithEnums()
+        {
+            BasicWithEnumsStruct value = new BasicWithEnumsStruct()
+            {
+                A = EnumOfByte.A,
+                B = EnumOfInt.C,
+            };
+
+            CheckSerializers(
+                value,
+                BasicWithEnumsStruct.Size,
+                BitSerializerTests_BasicWithEnumsStructSerializer.Size,
+                BitSerializerTests_BasicWithEnumsStructSerializer.CalculateSize,
+                BitSerializerTests_BasicWithEnumsStructSerializer.Serialize,
+                BitSerializerTests_BasicWithEnumsStructSerializer.Deserialize);
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        [BitStruct]
         internal struct PrimitiveConstArraysStruct
         {
             public const int Size = 60;
@@ -208,6 +236,61 @@ namespace BitSerialization.Tests
                 BitSerializerTests_PrimitiveConstArraysStructSerializer.CalculateSize,
                 BitSerializerTests_PrimitiveConstArraysStructSerializer.Serialize,
                 BitSerializerTests_PrimitiveConstArraysStructSerializer.Deserialize);
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        [BitStruct]
+        internal struct WithEnumsConstArraysStruct
+        {
+            public const int Size = 16;
+
+            [BitArray(BitArraySizeType.Const, ConstSize = 4)]
+            public EnumOfByte[]? A;
+            [BitArray(BitArraySizeType.Const, ConstSize = 3)]
+            public EnumOfInt[]? B;
+        }
+
+        [Fact]
+        public void WithEnumsConstArrays()
+        {
+            WithEnumsConstArraysStruct value = new WithEnumsConstArraysStruct()
+            {
+                A = new EnumOfByte[] { EnumOfByte.A, EnumOfByte.B, EnumOfByte.C, EnumOfByte.A },
+                B = new EnumOfInt[] { EnumOfInt.A, EnumOfInt.B, EnumOfInt.C },
+            };
+
+            CheckSerializers(
+                value,
+                WithEnumsConstArraysStruct.Size,
+                BitSerializerTests_WithEnumsConstArraysStructSerializer.Size,
+                BitSerializerTests_WithEnumsConstArraysStructSerializer.CalculateSize,
+                BitSerializerTests_WithEnumsConstArraysStructSerializer.Serialize,
+                BitSerializerTests_WithEnumsConstArraysStructSerializer.Deserialize);
+        }
+
+        [Fact]
+        public void WithEnumsConstArraysWithBackfill()
+        {
+            WithEnumsConstArraysStruct value = new WithEnumsConstArraysStruct()
+            {
+                A = new EnumOfByte[] { EnumOfByte.A, EnumOfByte.B },
+                B = new EnumOfInt[] { EnumOfInt.A, EnumOfInt.B },
+            };
+
+            WithEnumsConstArraysStruct expectedDeserializeValue = new WithEnumsConstArraysStruct()
+            {
+                A = new EnumOfByte[] { EnumOfByte.A, EnumOfByte.B, 0, 0 },
+                B = new EnumOfInt[] { EnumOfInt.A, EnumOfInt.B, 0 },
+            };
+
+            CheckSerializers(
+                value,
+                expectedDeserializeValue,
+                WithEnumsConstArraysStruct.Size,
+                BitSerializerTests_WithEnumsConstArraysStructSerializer.Size,
+                BitSerializerTests_WithEnumsConstArraysStructSerializer.CalculateSize,
+                BitSerializerTests_WithEnumsConstArraysStructSerializer.Serialize,
+                BitSerializerTests_WithEnumsConstArraysStructSerializer.Deserialize);
         }
 
         [StructLayout(LayoutKind.Sequential)]

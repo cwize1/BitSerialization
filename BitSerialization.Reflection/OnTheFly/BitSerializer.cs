@@ -289,11 +289,11 @@ namespace BitSerialization.Reflection.OnTheFly
                     {
                         int collectionSize = arrayAttribute.ConstSize;
 
-                        Array list = Array.CreateInstance(elementType!, collectionSize);
+                        Array list = Array.CreateInstance(elementType, collectionSize);
                         for (int i = 0; i != collectionSize; ++i)
                         {
                             object itemValue;
-                            itr = DeserializeValue(structAttribute.Endianess, elementType!, itr, field.Name, out itemValue);
+                            itr = DeserializeValue(structAttribute.Endianess, elementType, itr, field.Name, out itemValue);
                             list.SetValue(itemValue, i);
                         }
 
@@ -340,15 +340,16 @@ namespace BitSerialization.Reflection.OnTheFly
                 return itr;
             }
 
+            Type underlyingValueType = valueType;
             if (valueType.IsEnum)
             {
-                valueType = valueType.GetEnumUnderlyingType();
+                underlyingValueType = valueType.GetEnumUnderlyingType();
             }
 
             bool success;
             int fieldSize;
 
-            if (valueType == typeof(byte))
+            if (underlyingValueType == typeof(byte))
             {
                 fieldSize = sizeof(byte);
 
@@ -356,7 +357,7 @@ namespace BitSerialization.Reflection.OnTheFly
                 success = TryReadUInt8(itr, out fieldValue);
                 value = fieldValue;
             }
-            else if (valueType == typeof(sbyte))
+            else if (underlyingValueType == typeof(sbyte))
             {
                 fieldSize = sizeof(sbyte);
 
@@ -364,7 +365,7 @@ namespace BitSerialization.Reflection.OnTheFly
                 success = TryReadInt8(itr, out fieldValue);
                 value = fieldValue;
             }
-            else if (valueType == typeof(short))
+            else if (underlyingValueType == typeof(short))
             {
                 fieldSize = sizeof(short);
 
@@ -375,7 +376,7 @@ namespace BitSerialization.Reflection.OnTheFly
 
                 value = fieldValue;
             }
-            else if (valueType == typeof(ushort))
+            else if (underlyingValueType == typeof(ushort))
             {
                 fieldSize = sizeof(ushort);
 
@@ -386,7 +387,7 @@ namespace BitSerialization.Reflection.OnTheFly
 
                 value = fieldValue;
             }
-            else if (valueType == typeof(int))
+            else if (underlyingValueType == typeof(int))
             {
                 fieldSize = sizeof(int);
 
@@ -397,7 +398,7 @@ namespace BitSerialization.Reflection.OnTheFly
 
                 value = fieldValue;
             }
-            else if (valueType == typeof(uint))
+            else if (underlyingValueType == typeof(uint))
             {
                 fieldSize = sizeof(uint);
 
@@ -408,7 +409,7 @@ namespace BitSerialization.Reflection.OnTheFly
 
                 value = fieldValue;
             }
-            else if (valueType == typeof(long))
+            else if (underlyingValueType == typeof(long))
             {
                 fieldSize = sizeof(long);
 
@@ -419,7 +420,7 @@ namespace BitSerialization.Reflection.OnTheFly
 
                 value = fieldValue;
             }
-            else if (valueType == typeof(ulong))
+            else if (underlyingValueType == typeof(ulong))
             {
                 fieldSize = sizeof(ulong);
 
@@ -438,6 +439,11 @@ namespace BitSerialization.Reflection.OnTheFly
             if (!success)
             {
                 throw new Exception($"Not enough bytes to deserialize field {fieldName} of type {valueType.Name}.");
+            }
+
+            if (valueType.IsEnum)
+            {
+                value = Enum.ToObject(valueType, value);
             }
 
             return itr.Slice(fieldSize);
