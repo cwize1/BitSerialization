@@ -1,7 +1,7 @@
-﻿using System;
-using System.Runtime.CompilerServices;
+﻿using BitSerialization.Common;
+using System;
 
-namespace BitSerialization.Common.Implementation
+namespace BitSerialization.Reflection.PreCalculated.Implementation
 {
     internal sealed class BitSerializerUInt8Array<T> :
         BitSerializerArray<T>

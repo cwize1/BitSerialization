@@ -1,13 +1,14 @@
-﻿using System;
+﻿using BitSerialization.Common;
+using BitSerialization.Reflection.Utilities;
+using System;
 using System.Buffers.Binary;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
-using BitSerialization.Common.Implementation;
 
-namespace BitSerialization.Common
+namespace BitSerialization.Reflection.OnTheFly
 {
     public static class BitSerializer
     {

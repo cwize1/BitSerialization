@@ -3,9 +3,8 @@ using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 
-namespace BitSerialization.Common.Implementation
+namespace BitSerialization.Reflection.PreCalculated.Implementation
 {
     internal delegate ReadOnlySpan<byte> DeserializeFieldHandler(ReadOnlySpan<byte> source, FieldInfo fieldInfo, TypedReference obj);
     internal delegate Span<byte> SerializeFieldHandler(Span<byte> destination, FieldInfo fieldInfo, TypedReference obj);

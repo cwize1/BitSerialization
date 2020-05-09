@@ -1,11 +1,13 @@
-﻿using System;
+﻿using BitSerialization.Common;
+using BitSerialization.Reflection.PreCalculated.Implementation;
+using BitSerialization.Reflection.Utilities;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
-using BitSerialization.Common.Implementation;
 
-namespace BitSerialization.Common
+namespace BitSerialization.Reflection.PreCalculated
 {
     public static class BitSerializerStruct<T>
         where T : struct

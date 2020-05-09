@@ -1,5 +1,6 @@
 using BitSerialization.Common;
-using BitSerialization.Tests.Types;
+using BitSerialization.Reflection.OnTheFly;
+using BitSerialization.Reflection.PreCalculated;
 using KellermanSoftware.CompareNetObjects;
 using System;
 using System.Runtime.InteropServices;

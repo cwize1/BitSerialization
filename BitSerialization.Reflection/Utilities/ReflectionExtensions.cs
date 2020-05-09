@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace BitSerialization.Common.Implementation
+namespace BitSerialization.Reflection.Utilities
 {
     internal static class ReflectionExtensions
     {

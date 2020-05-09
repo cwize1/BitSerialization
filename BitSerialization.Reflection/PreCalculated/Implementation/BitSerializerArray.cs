@@ -1,8 +1,9 @@
-﻿using System;
+﻿using BitSerialization.Common;
+using System;
 using System.Collections.Generic;
 using System.Reflection;
 
-namespace BitSerialization.Common.Implementation
+namespace BitSerialization.Reflection.PreCalculated.Implementation
 {
     internal abstract class BitSerializerArray<T>
         where T : struct
