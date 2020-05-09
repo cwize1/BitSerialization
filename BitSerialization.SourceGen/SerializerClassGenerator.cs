@@ -368,7 +368,32 @@ namespace BitSerialization.Generated
                 sourceBuilder.Append($@"
 namespace {classSymbol.ContainingNamespace}
 {{
-    internal static class {serializerClassName}
+");
+                ITypeSymbol[] classContainingTypes = SourceGenUtils.GetContainingTypesList(classSymbol);
+                foreach (ITypeSymbol containingType in classContainingTypes)
+                {
+                    switch (containingType.TypeKind)
+                    {
+                    case TypeKind.Class:
+                        sourceBuilder.Append($@"
+    partial class {containingType.Name} {{
+");
+                        break;
+
+                    case TypeKind.Struct:
+                        sourceBuilder.Append($@"
+    partial struct {containingType.Name} {{
+");
+                        break;
+
+                    default:
+                        context.ReportDiagnostic(Diagnostic.Create(new DiagnosticDescriptor("TMP", "TMP", $"Only expecting struct or class containing types. Have {containingType.TypeKind}.", "TMP", DiagnosticSeverity.Error, true), Location.Create("TMP", new TextSpan(), new LinePositionSpan())));
+                        return;
+                    }
+                }
+
+                sourceBuilder.Append($@"
+    {SourceGenUtils.GetAccessibilityString(classSymbol.DeclaredAccessibility)} static class {serializerClassName}
     {{
 ");
 
@@ -678,8 +703,15 @@ namespace {classSymbol.ContainingNamespace}
                 sourceBuilder.Append(sizeFuncBuilder.ToString());
                 sourceBuilder.Append(serializeFuncBuilder.ToString());
                 sourceBuilder.Append(deserializeFuncBuilder.ToString());
-                sourceBuilder.Append($@"
+
+                for (int i = 0; i != classContainingTypes.Length + 1; ++i)
+                {
+                    sourceBuilder.Append($@"
     }}
+");
+                }
+
+                sourceBuilder.Append($@"
 }}
 ");
 
@@ -690,14 +722,12 @@ namespace {classSymbol.ContainingNamespace}
 
         private static string CreateSerializerName(INamedTypeSymbol classSymbol)
         {
-            return classSymbol.ContainingType != null ?
-                $"{classSymbol.ContainingType.Name}_{classSymbol.Name}Serializer" :
-                $"{classSymbol.Name}Serializer";
+            return $"{classSymbol.Name}Serializer";
         }
 
         private static string CreateSerializerFullName(INamedTypeSymbol classSymbol)
         {
-            return $"global::{classSymbol.ContainingNamespace}.{CreateSerializerName(classSymbol)}";
+            return $"global::{SourceGenUtils.GetTypeNamespace(classSymbol)}.{CreateSerializerName(classSymbol)}";
         }
     }
 }

@@ -81,9 +81,55 @@ namespace BitSerialization.SourceGen
 
         public static string GetTypeNamespace(ITypeSymbol typeSymbol)
         {
-            return typeSymbol.ContainingType != null ?
-                $"global::{typeSymbol.ContainingType.ContainingNamespace}.{typeSymbol.ContainingType.Name}" :
-                $"global::{typeSymbol.ContainingNamespace}";
+            StringBuilder result = new StringBuilder("global::");
+            result.Append(typeSymbol.ContainingNamespace);
+
+            foreach (ITypeSymbol containingType in GetContainingTypesList(typeSymbol))
+            {
+                result.Append(".");
+                result.Append(containingType.Name);
+            }
+
+            return result.ToString();
+        }
+
+        public static ITypeSymbol[] GetContainingTypesList(ITypeSymbol typeSymbol)
+        {
+            Stack<ITypeSymbol> containingTypes = new Stack<ITypeSymbol>();
+            for (ITypeSymbol containingType = typeSymbol.ContainingType; containingType != null; containingType = containingType.ContainingType)
+            {
+                containingTypes.Push(containingType);
+            }
+
+            return containingTypes.ToArray();
+        }
+
+        public static string GetAccessibilityString(Accessibility accessibility)
+        {
+            switch (accessibility)
+            {
+            case Accessibility.Private:
+                return "private";
+
+            case Accessibility.ProtectedAndInternal:
+                return "private protected";
+
+            case Accessibility.Protected:
+                return "protected";
+
+            case Accessibility.Internal:
+                return "internal";
+
+            case Accessibility.ProtectedOrInternal:
+                return "protected internal";
+
+            case Accessibility.Public:
+                return "public";
+
+            case Accessibility.NotApplicable:
+            default:
+                throw new Exception($"Unknown accessibility value of {accessibility}.");
+            }
         }
     }
 }

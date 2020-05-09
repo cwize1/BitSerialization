@@ -8,7 +8,7 @@ using Xunit;
 
 namespace BitSerialization.Tests
 {
-    public class BitSerializerTests
+    public partial class BitSerializerTests
     {
         delegate int CalculateSizeFunc<T>(T value);
         delegate Span<byte> SerializeFunc<T>(Span<byte> output, T value);
@@ -119,10 +119,10 @@ namespace BitSerialization.Tests
             CheckSerializers(
                 value,
                 BasicStruct.Size,
-                BitSerializerTests_BasicStructSerializer.Size,
-                BitSerializerTests_BasicStructSerializer.CalculateSize,
-                BitSerializerTests_BasicStructSerializer.Serialize,
-                BitSerializerTests_BasicStructSerializer.Deserialize);
+                BasicStructSerializer.Size,
+                BasicStructSerializer.CalculateSize,
+                BasicStructSerializer.Serialize,
+                BasicStructSerializer.Deserialize);
         }
 
         [StructLayout(LayoutKind.Sequential)]
@@ -147,10 +147,10 @@ namespace BitSerialization.Tests
             CheckSerializers(
                 value,
                 BasicWithEnumsStruct.Size,
-                BitSerializerTests_BasicWithEnumsStructSerializer.Size,
-                BitSerializerTests_BasicWithEnumsStructSerializer.CalculateSize,
-                BitSerializerTests_BasicWithEnumsStructSerializer.Serialize,
-                BitSerializerTests_BasicWithEnumsStructSerializer.Deserialize);
+                BasicWithEnumsStructSerializer.Size,
+                BasicWithEnumsStructSerializer.CalculateSize,
+                BasicWithEnumsStructSerializer.Serialize,
+                BasicWithEnumsStructSerializer.Deserialize);
         }
 
         [StructLayout(LayoutKind.Sequential)]
@@ -195,10 +195,10 @@ namespace BitSerialization.Tests
             CheckSerializers(
                 value,
                 PrimitiveConstArraysStruct.Size,
-                BitSerializerTests_PrimitiveConstArraysStructSerializer.Size,
-                BitSerializerTests_PrimitiveConstArraysStructSerializer.CalculateSize,
-                BitSerializerTests_PrimitiveConstArraysStructSerializer.Serialize,
-                BitSerializerTests_PrimitiveConstArraysStructSerializer.Deserialize);
+                PrimitiveConstArraysStructSerializer.Size,
+                PrimitiveConstArraysStructSerializer.CalculateSize,
+                PrimitiveConstArraysStructSerializer.Serialize,
+                PrimitiveConstArraysStructSerializer.Deserialize);
         }
 
         [Fact]
@@ -232,10 +232,10 @@ namespace BitSerialization.Tests
                 value,
                 expectedDeserializeValue,
                 PrimitiveConstArraysStruct.Size,
-                BitSerializerTests_PrimitiveConstArraysStructSerializer.Size,
-                BitSerializerTests_PrimitiveConstArraysStructSerializer.CalculateSize,
-                BitSerializerTests_PrimitiveConstArraysStructSerializer.Serialize,
-                BitSerializerTests_PrimitiveConstArraysStructSerializer.Deserialize);
+                PrimitiveConstArraysStructSerializer.Size,
+                PrimitiveConstArraysStructSerializer.CalculateSize,
+                PrimitiveConstArraysStructSerializer.Serialize,
+                PrimitiveConstArraysStructSerializer.Deserialize);
         }
 
         [StructLayout(LayoutKind.Sequential)]
@@ -262,10 +262,10 @@ namespace BitSerialization.Tests
             CheckSerializers(
                 value,
                 WithEnumsConstArraysStruct.Size,
-                BitSerializerTests_WithEnumsConstArraysStructSerializer.Size,
-                BitSerializerTests_WithEnumsConstArraysStructSerializer.CalculateSize,
-                BitSerializerTests_WithEnumsConstArraysStructSerializer.Serialize,
-                BitSerializerTests_WithEnumsConstArraysStructSerializer.Deserialize);
+                WithEnumsConstArraysStructSerializer.Size,
+                WithEnumsConstArraysStructSerializer.CalculateSize,
+                WithEnumsConstArraysStructSerializer.Serialize,
+                WithEnumsConstArraysStructSerializer.Deserialize);
         }
 
         [Fact]
@@ -287,10 +287,10 @@ namespace BitSerialization.Tests
                 value,
                 expectedDeserializeValue,
                 WithEnumsConstArraysStruct.Size,
-                BitSerializerTests_WithEnumsConstArraysStructSerializer.Size,
-                BitSerializerTests_WithEnumsConstArraysStructSerializer.CalculateSize,
-                BitSerializerTests_WithEnumsConstArraysStructSerializer.Serialize,
-                BitSerializerTests_WithEnumsConstArraysStructSerializer.Deserialize);
+                WithEnumsConstArraysStructSerializer.Size,
+                WithEnumsConstArraysStructSerializer.CalculateSize,
+                WithEnumsConstArraysStructSerializer.Serialize,
+                WithEnumsConstArraysStructSerializer.Deserialize);
         }
 
         [StructLayout(LayoutKind.Sequential)]
@@ -319,18 +319,18 @@ namespace BitSerialization.Tests
                 valueEmpty,
                 0,
                 null,
-                BitSerializerTests_PrimitivesEndFillArrayStructSerializer.CalculateSize,
-                BitSerializerTests_PrimitivesEndFillArrayStructSerializer.Serialize,
-                BitSerializerTests_PrimitivesEndFillArrayStructSerializer.Deserialize);
+                PrimitivesEndFillArrayStructSerializer.CalculateSize,
+                PrimitivesEndFillArrayStructSerializer.Serialize,
+                PrimitivesEndFillArrayStructSerializer.Deserialize);
 
             CheckSerializers(
                 valueEmpty,
                 valueEmpty,
                 0,
                 null,
-                BitSerializerTests_PrimitivesEndFillArrayStructSerializer.CalculateSize,
-                BitSerializerTests_PrimitivesEndFillArrayStructSerializer.Serialize,
-                BitSerializerTests_PrimitivesEndFillArrayStructSerializer.Deserialize);
+                PrimitivesEndFillArrayStructSerializer.CalculateSize,
+                PrimitivesEndFillArrayStructSerializer.Serialize,
+                PrimitivesEndFillArrayStructSerializer.Deserialize);
         }
 
         [StructLayout(LayoutKind.Sequential)]
@@ -353,9 +353,9 @@ namespace BitSerialization.Tests
                 value,
                 3,
                 null,
-                BitSerializerTests_EnumEndFillArrayStructSerializer.CalculateSize,
-                BitSerializerTests_EnumEndFillArrayStructSerializer.Serialize,
-                BitSerializerTests_EnumEndFillArrayStructSerializer.Deserialize);
+                EnumEndFillArrayStructSerializer.CalculateSize,
+                EnumEndFillArrayStructSerializer.Serialize,
+                EnumEndFillArrayStructSerializer.Deserialize);
         }
     }
 }
