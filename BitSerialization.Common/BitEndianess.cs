@@ -4,6 +4,7 @@
 
 namespace BitSerialization.Common
 {
+    // The endianess used when serializing and deserializing.
     public enum BitEndianess
     {
         LittleEndian,

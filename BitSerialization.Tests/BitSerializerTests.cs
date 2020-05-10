@@ -64,25 +64,31 @@ namespace BitSerialization.Tests
             Assert.Equal(expectedSerializeSize, calculateSizeFunc(value));
 
             byte[] output1 = new byte[expectedSerializeSize];
-            BitSerializer.Serialize(value, output1);
+            Span<byte> outputItr1 = BitSerializer.Serialize(output1, value);
+            Assert.Equal(0, outputItr1.Length);
 
             byte[] output2 = new byte[expectedSerializeSize];
-            BitSerializer<T>.Serialize(output2, value);
+            Span<byte> outputItr2 = BitSerializer<T>.Serialize(output2, value);
+            Assert.Equal(0, outputItr2.Length);
 
             byte[] output3 = new byte[expectedSerializeSize];
-            serializeFunc(output3, value);
+            Span<byte> outputItr3 = serializeFunc(output3, value);
+            Assert.Equal(0, outputItr3.Length);
 
             Assert.Equal(output1, output2);
             Assert.Equal(output1, output3);
 
             T value1;
-            BitSerializer.Deserialize(output1, out value1);
+            ReadOnlySpan<byte> inputItr1 = BitSerializer.Deserialize(output1, out value1);
+            Assert.Equal(0, inputItr1.Length);
 
             T value2;
-            BitSerializer<T>.Deserialize(output2, out value2);
+            ReadOnlySpan<byte> inputItr2 = BitSerializer<T>.Deserialize(output2, out value2);
+            Assert.Equal(0, inputItr2.Length);
 
             T value3;
-            deserializeFunc(output3, out value3);
+            ReadOnlySpan<byte> inputItr3 = deserializeFunc(output3, out value3);
+            Assert.Equal(0, inputItr3.Length);
 
             expectedDeserializeValue.ShouldCompare(value1);
             expectedDeserializeValue.ShouldCompare(value2);

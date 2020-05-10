@@ -87,7 +87,7 @@ namespace BitSerialization.PerfTests
         public void OnTheFly()
         {
             byte[] output = new byte[_DataSerializationSize];
-            BitSerializer.Serialize(_Data, output);
+            BitSerializer.Serialize(output, _Data);
 
             Struct3 value;
             BitSerializer.Deserialize(output, out value);

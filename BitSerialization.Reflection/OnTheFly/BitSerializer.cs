@@ -16,16 +16,13 @@ namespace BitSerialization.Reflection.OnTheFly
 {
     public static class BitSerializer
     {
-        public static int Serialize<T>(T value, Span<byte> output)
-             where T : struct
+        public static Span<byte> Serialize<T>(Span<byte> output, T value)
+            where T : notnull
         {
-            Span<byte> itr = SerializeInternal(value, output);
-
-            // Calculate the number of bytes used.
-            return output.Length - itr.Length;
+            return Serialize(output, (object)value);
         }
 
-        private static Span<byte> SerializeInternal(object value, Span<byte> output)
+        private static Span<byte> Serialize(Span<byte> output, object value)
         {
             Span<byte> itr = output;
 
@@ -111,7 +108,7 @@ namespace BitSerialization.Reflection.OnTheFly
             // Check if the field's type is a struct.
             if (fieldType.IsStruct())
             {
-                return SerializeInternal(fieldValueAsObject, itr);
+                return Serialize(itr, fieldValueAsObject);
             }
 
             if (fieldType.IsEnum)
@@ -243,19 +240,18 @@ namespace BitSerialization.Reflection.OnTheFly
             return itr.Slice(fieldSize);
         }
 
-        public static int Deserialize<T>(ReadOnlySpan<byte> input, out T value)
+        public static ReadOnlySpan<byte> Deserialize<T>(ReadOnlySpan<byte> input, out T value)
              where T : struct
         {
             object valueAsObject;
-            ReadOnlySpan<byte> itr = DeserializeInternal(typeof(T), input, out valueAsObject);
+            ReadOnlySpan<byte> itr = Deserialize(input, typeof(T), out valueAsObject);
 
             value = (T)valueAsObject;
 
-            // Calculate the number of bytes used.
-            return input.Length - itr.Length;
+            return itr;
         }
 
-        private static ReadOnlySpan<byte> DeserializeInternal(Type type, ReadOnlySpan<byte> input, out object value)
+        public static ReadOnlySpan<byte> Deserialize(ReadOnlySpan<byte> input, Type type, out object value)
         {
             object result = Activator.CreateInstance(type)!;
             ReadOnlySpan<byte> itr = input;
@@ -338,9 +334,9 @@ namespace BitSerialization.Reflection.OnTheFly
         private static ReadOnlySpan<byte> DeserializeValue(BitEndianess endianess, Type valueType, ReadOnlySpan<byte> itr, string fieldName, out object value)
         {
             // Check if the field's type is a struct.
-            if (valueType.IsValueType && !valueType.IsEnum && !valueType.IsPrimitive)
+            if (valueType.IsStruct() || valueType.IsClass)
             {
-                itr = DeserializeInternal(valueType, itr, out value);
+                itr = Deserialize(itr, valueType, out value);
                 return itr;
             }
 
