@@ -39,6 +39,7 @@ namespace BitSerialization.Reflection.OnTheFly
             IEnumerable<FieldInfo> fields = type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
                 .OrderBy((field) => field.MetadataToken);
 
+            // Iterate through the object's fields.
             foreach (FieldInfo field in fields)
             {
                 Type fieldType = field.FieldType;
@@ -46,53 +47,7 @@ namespace BitSerialization.Reflection.OnTheFly
 
                 if (fieldType.IsArray)
                 {
-                    Array list = (Array)fieldValueAsObject;
-                    Type elementType = fieldType.GetElementType()!;
-
-                    BitArrayAttribute? arrayAttribute = field.GetCustomAttribute<BitArrayAttribute>();
-                    if (arrayAttribute == null)
-                    {
-                        throw new Exception($"Field ${field.Name} from type ${type.Name} must be annotated with BitArrayAttribute.");
-                    }
-
-                    int backfillCount = 0;
-
-                    switch (arrayAttribute.SizeType)
-                    {
-                    case BitArraySizeType.Const:
-                        int collectionCount = list?.Length ?? 0;
-
-                        if (collectionCount > arrayAttribute.ConstSize)
-                        {
-                            throw new Exception($"List ${field.Name} from type ${type.Name} is too large.");
-                        }
-
-                        backfillCount = arrayAttribute.ConstSize - collectionCount;
-                        break;
-
-                    case BitArraySizeType.EndFill:
-                        break;
-
-                    default:
-                        throw new Exception($"Unknown BitArraySizeType value {arrayAttribute.SizeType}");
-                    }
-
-                    if (list != null)
-                    {
-                        foreach (object? item in list)
-                        {
-                            itr = SerializeValue(structAttribute.Endianess, item!, elementType!, field.Name, itr);
-                        }
-                    }
-
-                    if (backfillCount > 0)
-                    {
-                        object defaultValue = Activator.CreateInstance(elementType!)!;
-                        for (int i = 0; i != backfillCount; ++i)
-                        {
-                            itr = SerializeValue(structAttribute.Endianess, defaultValue, elementType!, field.Name, itr);
-                        }
-                    }
+                    itr = SerializeArray(structAttribute.Endianess, fieldValueAsObject, field, type.Name, itr);
                 }
                 else
                 {
@@ -103,24 +58,77 @@ namespace BitSerialization.Reflection.OnTheFly
             return itr;
         }
 
-        private static Span<byte> SerializeValue(BitEndianess endianess, object fieldValueAsObject, Type fieldType, string fieldName, Span<byte> itr)
+        private static Span<byte> SerializeArray(BitEndianess endianess, object fieldValueAsObject, FieldInfo field, string typeName, Span<byte> itr)
         {
-            // Check if the field's type is a struct.
-            if (fieldType.IsStruct())
+            Array list = (Array)fieldValueAsObject;
+            Type fieldType = field.FieldType;
+            Type elementType = fieldType.GetElementType()!;
+
+            BitArrayAttribute? arrayAttribute = field.GetCustomAttribute<BitArrayAttribute>();
+            if (arrayAttribute == null)
             {
-                return Serialize(itr, fieldValueAsObject);
+                throw new Exception($"Field ${field.Name} from type ${typeName} must be annotated with BitArrayAttribute.");
             }
 
-            if (fieldType.IsEnum)
+            int backfillCount = 0;
+
+            switch (arrayAttribute.SizeType)
             {
-                fieldType = fieldType.GetEnumUnderlyingType();
-                fieldValueAsObject = Convert.ChangeType(fieldValueAsObject, fieldType);
+            case BitArraySizeType.Const:
+                int collectionCount = list?.Length ?? 0;
+
+                if (collectionCount > arrayAttribute.ConstSize)
+                {
+                    throw new Exception($"List ${field.Name} from type ${typeName} is too large.");
+                }
+
+                backfillCount = arrayAttribute.ConstSize - collectionCount;
+                break;
+
+            case BitArraySizeType.EndFill:
+                break;
+
+            default:
+                throw new Exception($"Unknown BitArraySizeType value {arrayAttribute.SizeType}");
+            }
+
+            if (list != null)
+            {
+                foreach (object? item in list)
+                {
+                    itr = SerializeValue(endianess, item!, elementType!, field.Name, itr);
+                }
+            }
+
+            if (backfillCount > 0)
+            {
+                object defaultValue = Activator.CreateInstance(elementType!)!;
+                for (int i = 0; i != backfillCount; ++i)
+                {
+                    itr = SerializeValue(endianess, defaultValue, elementType!, field.Name, itr);
+                }
+            }
+
+            return itr;
+        }
+
+        private static Span<byte> SerializeValue(BitEndianess endianess, object value, Type valueType, string fieldName, Span<byte> itr)
+        {
+            if (valueType.IsStruct() || valueType.IsClass)
+            {
+                return Serialize(itr, value);
+            }
+
+            if (valueType.IsEnum)
+            {
+                valueType = valueType.GetEnumUnderlyingType();
+                value = Convert.ChangeType(value, valueType);
             }
 
             bool success;
             int fieldSize;
 
-            switch (fieldValueAsObject)
+            switch (value)
             {
             case byte fieldValue:
                 fieldSize = sizeof(byte);
@@ -229,12 +237,12 @@ namespace BitSerialization.Reflection.OnTheFly
                 break;
 
             default:
-                throw new Exception($"Can't serialize type of {fieldType.Name} from field {fieldName}.");
+                throw new Exception($"Can't serialize type of {valueType.Name} from field {fieldName}.");
             }
 
             if (!success)
             {
-                throw new Exception($"Not enough space to serialize type {fieldType.Name} from field {fieldName}.");
+                throw new Exception($"Not enough space to serialize type {valueType.Name} from field {fieldName}.");
             }
 
             return itr.Slice(fieldSize);
@@ -275,49 +283,7 @@ namespace BitSerialization.Reflection.OnTheFly
 
                 if (fieldType.IsArray)
                 {
-                    Type elementType = fieldType.GetElementType()!;
-
-                    BitArrayAttribute? arrayAttribute = field.GetCustomAttribute<BitArrayAttribute>();
-                    if (arrayAttribute == null)
-                    {
-                        throw new Exception($"Field ${field.Name} from type ${type.Name} must be annotated with BitArrayAttribute.");
-                    }
-
-                    switch (arrayAttribute.SizeType)
-                    {
-                    case BitArraySizeType.Const:
-                    {
-                        int collectionSize = arrayAttribute.ConstSize;
-
-                        Array list = Array.CreateInstance(elementType, collectionSize);
-                        for (int i = 0; i != collectionSize; ++i)
-                        {
-                            object itemValue;
-                            itr = DeserializeValue(structAttribute.Endianess, elementType, itr, field.Name, out itemValue);
-                            list.SetValue(itemValue, i);
-                        }
-
-                        fieldValue = list;
-                        break;
-                    }
-                    case BitArraySizeType.EndFill:
-                    {
-                        Type listType = typeof(List<>).MakeGenericType(elementType);
-                        IList list = (IList)Activator.CreateInstance(listType)!;
-
-                        while (!itr.IsEmpty)
-                        {
-                            object itemValue;
-                            itr = DeserializeValue(structAttribute.Endianess, elementType!, itr, field.Name, out itemValue);
-                            list.Add(itemValue);
-                        }
-
-                        fieldValue = listType.GetMethod(nameof(List<int>.ToArray))!.Invoke(list, null)!;
-                        break;
-                    }
-                    default:
-                        throw new Exception($"Unknown BitArraySizeType value {arrayAttribute.SizeType}");
-                    }
+                    itr = DeserializeArray(structAttribute.Endianess, field, type.Name, itr, out fieldValue);
                 }
                 else
                 {
@@ -331,13 +297,61 @@ namespace BitSerialization.Reflection.OnTheFly
             return itr;
         }
 
+        private static ReadOnlySpan<byte> DeserializeArray(BitEndianess endianess, FieldInfo field, string typeName, ReadOnlySpan<byte> itr, out object value)
+        {
+            Type fieldType = field.FieldType;
+            Type elementType = fieldType.GetElementType()!;
+
+            BitArrayAttribute? arrayAttribute = field.GetCustomAttribute<BitArrayAttribute>();
+            if (arrayAttribute == null)
+            {
+                throw new Exception($"Field ${field.Name} from type ${typeName} must be annotated with BitArrayAttribute.");
+            }
+
+            switch (arrayAttribute.SizeType)
+            {
+            case BitArraySizeType.Const:
+            {
+                int collectionSize = arrayAttribute.ConstSize;
+
+                Array list = Array.CreateInstance(elementType, collectionSize);
+                for (int i = 0; i != collectionSize; ++i)
+                {
+                    object itemValue;
+                    itr = DeserializeValue(endianess, elementType, itr, field.Name, out itemValue);
+                    list.SetValue(itemValue, i);
+                }
+
+                value = list;
+                break;
+            }
+            case BitArraySizeType.EndFill:
+            {
+                Type listType = typeof(List<>).MakeGenericType(elementType);
+                IList list = (IList)Activator.CreateInstance(listType)!;
+
+                while (!itr.IsEmpty)
+                {
+                    object itemValue;
+                    itr = DeserializeValue(endianess, elementType!, itr, field.Name, out itemValue);
+                    list.Add(itemValue);
+                }
+
+                value = listType.GetMethod(nameof(List<int>.ToArray))!.Invoke(list, null)!;
+                break;
+            }
+            default:
+                throw new Exception($"Unknown BitArraySizeType value {arrayAttribute.SizeType}");
+            }
+
+            return itr;
+        }
+
         private static ReadOnlySpan<byte> DeserializeValue(BitEndianess endianess, Type valueType, ReadOnlySpan<byte> itr, string fieldName, out object value)
         {
-            // Check if the field's type is a struct.
             if (valueType.IsStruct() || valueType.IsClass)
             {
-                itr = Deserialize(itr, valueType, out value);
-                return itr;
+                return Deserialize(itr, valueType, out value);
             }
 
             Type underlyingValueType = valueType;
