@@ -2,6 +2,7 @@
 // Copyright (c) 2020 Chris Gunn
 //
 
+using BitSerialization.Common;
 using System;
 using System.Buffers.Binary;
 using System.Collections.Generic;
@@ -10,9 +11,6 @@ using System.Runtime.CompilerServices;
 
 namespace BitSerialization.Reflection.PreCalculated.Implementation
 {
-    internal delegate ReadOnlySpan<byte> DeserializeFieldHandler(ReadOnlySpan<byte> source, FieldInfo fieldInfo, object obj);
-    internal delegate Span<byte> SerializeFieldHandler(Span<byte> destination, FieldInfo fieldInfo, object obj);
-
     internal static class BitSerializerPrimitives
     {
         public struct TypeData
@@ -56,6 +54,14 @@ namespace BitSerialization.Reflection.PreCalculated.Implementation
             { typeof(long), new TypeData(DeserializeInt64BigEndianField<long>, SerializeInt64BigEndianField, typeof(BitSerializerInt64BigEndianArray<long>)) },
         };
 
+        public static Dictionary<Type, TypeData> GetTypeData(BitEndianess endianess)
+        {
+            return endianess == BitEndianess.BigEndian ?
+                BigEndianTypes :
+                LittleEndianTypes;
+        }
+
+        // Used to cast from an enum to its integer value and vice versa.
         public static ToType HardCast<FromType, ToType>(FromType value)
         {
             return Unsafe.As<FromType, ToType>(ref value);
@@ -76,7 +82,7 @@ namespace BitSerialization.Reflection.PreCalculated.Implementation
             where T : struct
         {
             ReadOnlySpan<byte> itr = DeserializeUInt8(source, out var value);
-            fieldInfo.SetValue(obj, Unsafe.As<byte, T>(ref value));
+            fieldInfo.SetValue(obj, HardCast<byte, T>(value));
             return itr;
         }
 
@@ -95,7 +101,7 @@ namespace BitSerialization.Reflection.PreCalculated.Implementation
             where T : struct
         {
             ReadOnlySpan<byte> itr = DeserializeInt8(source, out var value);
-            fieldInfo.SetValue(obj, Unsafe.As<sbyte, T>(ref value));
+            fieldInfo.SetValue(obj, HardCast<sbyte, T>(value));
             return itr;
         }
 
@@ -109,7 +115,7 @@ namespace BitSerialization.Reflection.PreCalculated.Implementation
             where T : struct
         {
             itr = DeserializeUInt16LittleEndian(itr, out var value);
-            fieldInfo.SetValue(obj, Unsafe.As<ushort, T>(ref value));
+            fieldInfo.SetValue(obj, HardCast<ushort, T>(value));
             return itr;
         }
 
@@ -123,7 +129,7 @@ namespace BitSerialization.Reflection.PreCalculated.Implementation
             where T : struct
         {
             itr = DeserializeUInt16BigEndian(itr, out var value);
-            fieldInfo.SetValue(obj, Unsafe.As<ushort, T>(ref value));
+            fieldInfo.SetValue(obj, HardCast<ushort, T>(value));
             return itr;
         }
 
@@ -137,7 +143,7 @@ namespace BitSerialization.Reflection.PreCalculated.Implementation
             where T : struct
         {
             itr = DeserializeInt16LittleEndian(itr, out var value);
-            fieldInfo.SetValue(obj, Unsafe.As<short, T>(ref value));
+            fieldInfo.SetValue(obj, HardCast<short, T>(value));
             return itr;
         }
 
@@ -151,7 +157,7 @@ namespace BitSerialization.Reflection.PreCalculated.Implementation
             where T : struct
         {
             itr = DeserializeInt16BigEndian(itr, out var value);
-            fieldInfo.SetValue(obj, Unsafe.As<short, T>(ref value));
+            fieldInfo.SetValue(obj, HardCast<short, T>(value));
             return itr;
         }
 
@@ -165,7 +171,7 @@ namespace BitSerialization.Reflection.PreCalculated.Implementation
             where T : struct
         {
             itr = DeserializeUInt32LittleEndian(itr, out var value);
-            fieldInfo.SetValue(obj, Unsafe.As<uint, T>(ref value));
+            fieldInfo.SetValue(obj, HardCast<uint, T>(value));
             return itr;
         }
 
@@ -179,7 +185,7 @@ namespace BitSerialization.Reflection.PreCalculated.Implementation
             where T : struct
         {
             itr = DeserializeUInt32BigEndian(itr, out var value);
-            fieldInfo.SetValue(obj, Unsafe.As<uint, T>(ref value));
+            fieldInfo.SetValue(obj, HardCast<uint, T>(value));
             return itr;
         }
 
@@ -193,7 +199,7 @@ namespace BitSerialization.Reflection.PreCalculated.Implementation
             where T : struct
         {
             itr = DeserializeInt32LittleEndian(itr, out var value);
-            fieldInfo.SetValue(obj, Unsafe.As<int, T>(ref value));
+            fieldInfo.SetValue(obj, HardCast<int, T>(value));
             return itr;
         }
 
@@ -207,7 +213,7 @@ namespace BitSerialization.Reflection.PreCalculated.Implementation
             where T : struct
         {
             itr = DeserializeInt32BigEndian(itr, out var value);
-            fieldInfo.SetValue(obj, Unsafe.As<int, T>(ref value));
+            fieldInfo.SetValue(obj, HardCast<int, T>(value));
             return itr;
         }
 
@@ -221,7 +227,7 @@ namespace BitSerialization.Reflection.PreCalculated.Implementation
             where T : struct
         {
             itr = DeserializeUInt64LittleEndian(itr, out var value);
-            fieldInfo.SetValue(obj, Unsafe.As<ulong, T>(ref value));
+            fieldInfo.SetValue(obj, HardCast<ulong, T>(value));
             return itr;
         }
 
@@ -235,7 +241,7 @@ namespace BitSerialization.Reflection.PreCalculated.Implementation
             where T : struct
         {
             itr = DeserializeUInt64BigEndian(itr, out var value);
-            fieldInfo.SetValue(obj, Unsafe.As<ulong, T>(ref value));
+            fieldInfo.SetValue(obj, HardCast<ulong, T>(value));
             return itr;
         }
 
@@ -249,7 +255,7 @@ namespace BitSerialization.Reflection.PreCalculated.Implementation
             where T : struct
         {
             itr = DeserializeInt64LittleEndian(itr, out var value);
-            fieldInfo.SetValue(obj, Unsafe.As<long, T>(ref value));
+            fieldInfo.SetValue(obj, HardCast<long, T>(value));
             return itr;
         }
 
@@ -263,7 +269,7 @@ namespace BitSerialization.Reflection.PreCalculated.Implementation
             where T : struct
         {
             itr = DeserializeInt64BigEndian(itr, out var value);
-            fieldInfo.SetValue(obj, Unsafe.As<long, T>(ref value));
+            fieldInfo.SetValue(obj, HardCast<long, T>(value));
             return itr;
         }
 

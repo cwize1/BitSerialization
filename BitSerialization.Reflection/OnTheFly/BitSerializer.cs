@@ -25,8 +25,9 @@ namespace BitSerialization.Reflection.OnTheFly
         private static Span<byte> Serialize(Span<byte> output, object value)
         {
             Span<byte> itr = output;
-
             Type type = value.GetType();
+
+            // Get the object's serialization settings.
             BitStructAttribute structAttribute = type.GetCustomAttribute<BitStructAttribute>() ?? BitStructAttribute.Default;
 
             if (type.StructLayoutAttribute == null || type.StructLayoutAttribute.Value != LayoutKind.Sequential)
@@ -64,6 +65,7 @@ namespace BitSerialization.Reflection.OnTheFly
             Type fieldType = field.FieldType;
             Type elementType = fieldType.GetElementType()!;
 
+            // Get the serialization settings for the array.
             BitArrayAttribute? arrayAttribute = field.GetCustomAttribute<BitArrayAttribute>();
             if (arrayAttribute == null)
             {
@@ -77,6 +79,7 @@ namespace BitSerialization.Reflection.OnTheFly
             case BitArraySizeType.Const:
                 int collectionCount = list?.Length ?? 0;
 
+                // Ensure provided array isn't too large.
                 if (collectionCount > arrayAttribute.ConstSize)
                 {
                     throw new Exception($"List ${field.Name} from type ${typeName} is too large.");
@@ -92,6 +95,7 @@ namespace BitSerialization.Reflection.OnTheFly
                 throw new Exception($"Unknown BitArraySizeType value {arrayAttribute.SizeType}");
             }
 
+            // Serialize the array's items.
             if (list != null)
             {
                 foreach (object? item in list)
@@ -100,6 +104,7 @@ namespace BitSerialization.Reflection.OnTheFly
                 }
             }
 
+            // Backfill the serialized array with default values (if neccessary).
             if (backfillCount > 0)
             {
                 object defaultValue = Activator.CreateInstance(elementType!)!;
@@ -119,6 +124,7 @@ namespace BitSerialization.Reflection.OnTheFly
                 return Serialize(itr, value);
             }
 
+            // Convert enum values to their underlying integer type.
             if (valueType.IsEnum)
             {
                 valueType = valueType.GetEnumUnderlyingType();
@@ -264,6 +270,7 @@ namespace BitSerialization.Reflection.OnTheFly
             object result = Activator.CreateInstance(type)!;
             ReadOnlySpan<byte> itr = input;
 
+            // Get the object's serialization settings.
             BitStructAttribute structAttribute = type.GetCustomAttribute<BitStructAttribute>() ?? BitStructAttribute.Default;
 
             if (type.StructLayoutAttribute == null || type.StructLayoutAttribute.Value != LayoutKind.Sequential)
@@ -276,6 +283,7 @@ namespace BitSerialization.Reflection.OnTheFly
             IEnumerable<FieldInfo> fields = type.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
                 .OrderBy((field) => field.MetadataToken);
 
+            // Iterate through the object's fields.
             foreach (FieldInfo field in fields)
             {
                 Type fieldType = field.FieldType;
@@ -302,6 +310,7 @@ namespace BitSerialization.Reflection.OnTheFly
             Type fieldType = field.FieldType;
             Type elementType = fieldType.GetElementType()!;
 
+            // Get the serialization settings for the array.
             BitArrayAttribute? arrayAttribute = field.GetCustomAttribute<BitArrayAttribute>();
             if (arrayAttribute == null)
             {
@@ -315,6 +324,8 @@ namespace BitSerialization.Reflection.OnTheFly
                 int collectionSize = arrayAttribute.ConstSize;
 
                 Array list = Array.CreateInstance(elementType, collectionSize);
+
+                // Deserialize the array's items.
                 for (int i = 0; i != collectionSize; ++i)
                 {
                     object itemValue;
@@ -330,6 +341,8 @@ namespace BitSerialization.Reflection.OnTheFly
                 Type listType = typeof(List<>).MakeGenericType(elementType);
                 IList list = (IList)Activator.CreateInstance(listType)!;
 
+                // Deserialize the array's items.
+                // Since this is an end fill array, keep going until there is no more input.
                 while (!itr.IsEmpty)
                 {
                     object itemValue;
@@ -337,6 +350,7 @@ namespace BitSerialization.Reflection.OnTheFly
                     list.Add(itemValue);
                 }
 
+                // Call ToArray() on list.
                 value = listType.GetMethod(nameof(List<int>.ToArray))!.Invoke(list, null)!;
                 break;
             }
@@ -354,6 +368,7 @@ namespace BitSerialization.Reflection.OnTheFly
                 return Deserialize(itr, valueType, out value);
             }
 
+            // If the value is an enum, then get the enum's underlying integer type.
             Type underlyingValueType = valueType;
             if (valueType.IsEnum)
             {
@@ -457,6 +472,7 @@ namespace BitSerialization.Reflection.OnTheFly
 
             if (valueType.IsEnum)
             {
+                // Convert integer value to enum value.
                 value = Enum.ToObject(valueType, value);
             }
 

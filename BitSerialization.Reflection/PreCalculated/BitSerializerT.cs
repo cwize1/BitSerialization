@@ -14,6 +14,7 @@ namespace BitSerialization.Reflection.PreCalculated
     {
         private static readonly FieldSerializationData[] _Playbook;
 
+        // Creates a playbook for serializing and deserializing the type T.
         static BitSerializer()
         {
             Type type = typeof(T);
@@ -39,6 +40,7 @@ namespace BitSerialization.Reflection.PreCalculated
 
                 if (fieldInfo.FieldType.IsArray)
                 {
+                    // Get the array's serialization settings.
                     BitArrayAttribute? arrayAttribute = fieldInfo.GetCustomAttribute<BitArrayAttribute>();
                     if (arrayAttribute == null)
                     {
@@ -59,34 +61,38 @@ namespace BitSerialization.Reflection.PreCalculated
 
                     if (elementType.IsArray)
                     {
+                        // Can't handle array of arrays directly as serialization settings are required for the nested arrays.
                         throw new Exception($"Cannot serialize a pure array of array for field {fieldInfo.Name} of type {type.Name}. Use a wrapper struct instead.");
                     }
                     else if (elementType.IsStruct() ||
+                        elementType.IsClass ||
                         elementType.IsPrimitive ||
                         elementType.IsEnum)
                     {
                         Type? arraySerializerType = null;
 
-                        if (elementType.IsStruct())
+                        if (elementType.IsStruct() || elementType.IsClass)
                         {
+                            // Create an array serializer type for this object type.
                             arraySerializerType = typeof(BitSerializerStructArray<>).MakeGenericType(elementType);
                         }
                         else
                         {
+                            // If element type is an enum, get the underlying integer type to use for serialization.
                             Type elementUnderlyingType = elementType.IsEnum ?
                                 elementType.GetEnumUnderlyingType() :
                                 elementType;
 
-                            Dictionary<Type, BitSerializerPrimitives.TypeData> types = structAttribute.Endianess == BitEndianess.BigEndian ?
-                                BitSerializerPrimitives.BigEndianTypes :
-                                BitSerializerPrimitives.LittleEndianTypes;
+                            Dictionary<Type, BitSerializerPrimitives.TypeData> types = BitSerializerPrimitives.GetTypeData(structAttribute.Endianess);
 
+                            // Get the array serializer class type for the integer type.
                             if (types.TryGetValue(elementUnderlyingType, out var typeData))
                             {
                                 arraySerializerType = typeData.ArraySerializerType;
 
                                 if (elementType.IsEnum)
                                 {
+                                    // Change the array serializer class's generic type parameter to the enum type.
                                     arraySerializerType = arraySerializerType.GetGenericTypeDefinition().MakeGenericType(elementType);
                                 }
                             }
@@ -94,7 +100,10 @@ namespace BitSerialization.Reflection.PreCalculated
 
                         if (arraySerializerType != null)
                         {
+                            // Create an instance of the array serialization type.
                             object arraySerializer = Activator.CreateInstance(arraySerializerType, arrayAttribute)!;
+
+                            // Get references to the serialization and deserialization member functions.
                             deserializeFunc = (DeserializeFieldHandler)arraySerializerType.GetMethod(nameof(BitSerializerArray<int>.DeserializeField), BindingFlags.Instance | BindingFlags.Public)!.CreateDelegate(typeof(DeserializeFieldHandler), arraySerializer);
                             serializeFunc = (SerializeFieldHandler)arraySerializerType.GetMethod(nameof(BitSerializerArray<int>.SerializeField), BindingFlags.Instance | BindingFlags.Public)!.CreateDelegate(typeof(SerializeFieldHandler), arraySerializer);
                             handled = true;
@@ -104,14 +113,14 @@ namespace BitSerialization.Reflection.PreCalculated
                 else if (fieldInfo.FieldType.IsEnum ||
                     fieldInfo.FieldType.IsPrimitive)
                 {
+                    // If element type is an enum, get the underlying integer type to use for serialization.
                     Type fieldUnderlyingType = fieldInfo.FieldType.IsEnum ?
                         fieldInfo.FieldType.GetEnumUnderlyingType() :
                         fieldInfo.FieldType;
 
-                    Dictionary<Type, BitSerializerPrimitives.TypeData> types = structAttribute.Endianess == BitEndianess.BigEndian ?
-                        BitSerializerPrimitives.BigEndianTypes :
-                        BitSerializerPrimitives.LittleEndianTypes;
+                    Dictionary<Type, BitSerializerPrimitives.TypeData> types = BitSerializerPrimitives.GetTypeData(structAttribute.Endianess);
 
+                    // Get the serialization methods for the integer type.
                     if (types.TryGetValue(fieldUnderlyingType, out var typeData))
                     {
                         deserializeFunc = typeData.DeserializeFunc;
@@ -119,6 +128,9 @@ namespace BitSerialization.Reflection.PreCalculated
 
                         if (fieldInfo.FieldType.IsEnum)
                         {
+                            // Change deserialization function's generic type parameter to the enum type.
+                            // Note: This isn't required for the serialization function since an enum wrapped in an object box can be directly
+                            // cast to the integer type.
                             MethodInfo deserializeFuncInfo = deserializeFunc.GetMethodInfo()!;
                             deserializeFunc = (DeserializeFieldHandler)deserializeFuncInfo.GetGenericMethodDefinition().MakeGenericMethod(fieldInfo.FieldType).CreateDelegate(typeof(DeserializeFieldHandler));
                         }
@@ -129,10 +141,12 @@ namespace BitSerialization.Reflection.PreCalculated
                 else if (fieldInfo.FieldType.IsStruct() ||
                     fieldInfo.FieldType.IsClass)
                 {
+                    // Get the BitSerializer type for this object.
                     Type bitSerializerStructType = typeof(BitSerializer<>).MakeGenericType(fieldInfo.FieldType);
 
-                    deserializeFunc = (DeserializeFieldHandler)bitSerializerStructType.GetMethod(nameof(DeserializeField)).CreateDelegate(typeof(DeserializeFieldHandler));
-                    serializeFunc = (SerializeFieldHandler)bitSerializerStructType.GetMethod(nameof(SerializeField)).CreateDelegate(typeof(SerializeFieldHandler));
+                    // Get references to the serialization and deserialization static functions.
+                    deserializeFunc = (DeserializeFieldHandler)bitSerializerStructType.GetMethod(nameof(DeserializeField), BindingFlags.NonPublic | BindingFlags.Static).CreateDelegate(typeof(DeserializeFieldHandler));
+                    serializeFunc = (SerializeFieldHandler)bitSerializerStructType.GetMethod(nameof(SerializeField), BindingFlags.NonPublic | BindingFlags.Static).CreateDelegate(typeof(SerializeFieldHandler));
                     handled = true;
                 }
 
@@ -160,7 +174,7 @@ namespace BitSerialization.Reflection.PreCalculated
             return itr;
         }
 
-        public static ReadOnlySpan<byte> DeserializeField(ReadOnlySpan<byte> itr, FieldInfo fieldInfo, object obj)
+        private static ReadOnlySpan<byte> DeserializeField(ReadOnlySpan<byte> itr, FieldInfo fieldInfo, object obj)
         {
             T value;
             itr = Deserialize(itr, out value);
@@ -180,7 +194,7 @@ namespace BitSerialization.Reflection.PreCalculated
             return itr;
         }
 
-        public static Span<byte> SerializeField(Span<byte> itr, FieldInfo fieldInfo, object obj)
+        private static Span<byte> SerializeField(Span<byte> itr, FieldInfo fieldInfo, object obj)
         {
             object? valueAsObject = fieldInfo.GetValue(obj);
             return Serialize(itr, in Unsafe.Unbox<T>(valueAsObject));

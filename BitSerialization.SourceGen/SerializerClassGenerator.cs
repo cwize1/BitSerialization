@@ -47,7 +47,7 @@ namespace BitSerialization.SourceGen
             INamedTypeSymbol bitStructAttributeSymbol = context.Compilation.GetTypeByMetadataName("BitSerialization.Common.BitStructAttribute");
             INamedTypeSymbol bitArrayAttributeSymbol = context.Compilation.GetTypeByMetadataName("BitSerialization.Common.BitArrayAttribute");
 
-            List<INamedTypeSymbol> bitStructClasses = FindAllBitStructClasses(context, bitStructAttributeSymbol, bitArrayAttributeSymbol);
+            List<INamedTypeSymbol> bitStructClasses = FindAllBitStructClasses(context, bitStructAttributeSymbol);
             if (bitStructClasses == null)
             {
                 return;
@@ -62,6 +62,7 @@ namespace BitSerialization.SourceGen
 
         public void WritePrimitivesSerializerClass(SourceGeneratorContext context)
         {
+            // Write out some functions that are  missing from the BinaryPrimitives class.
             var sourceBuilder = new StringBuilder();
             sourceBuilder.Append(@"
 namespace BitSerialization.Generated
@@ -187,7 +188,8 @@ namespace BitSerialization.Generated
             return result;
         }
 
-        private List<INamedTypeSymbol> FindAllBitStructClasses(SourceGeneratorContext context, INamedTypeSymbol bitStructAttributeSymbol, INamedTypeSymbol bitArrayAttributeSymbol)
+        // Finds all the classes annotated with the BitStruct attribute.
+        private List<INamedTypeSymbol> FindAllBitStructClasses(SourceGeneratorContext context, INamedTypeSymbol bitStructAttributeSymbol)
         {
             // retreive the populated receiver
             SyntaxReceiver receiver = context.SyntaxReceiver as SyntaxReceiver;
@@ -211,6 +213,7 @@ namespace BitSerialization.Generated
             return result;
         }
 
+        // Creates an iterator for an object's non-static member variables.
         private IEnumerable<IFieldSymbol> GetClassFieldMembers(INamedTypeSymbol classSymbol)
         {
             foreach (ISymbol classMember in classSymbol.GetMembers())
@@ -227,9 +230,12 @@ namespace BitSerialization.Generated
             }
         }
 
+        // Figures out which classes have a constant serialization size and which have a serialization size that can change
+        // depending on the object's value.
         private Dictionary<INamedTypeSymbol, ClassSerializeSizeInfo> GenerateClassSizeInfo(SourceGeneratorContext context, IReadOnlyList<INamedTypeSymbol> bitStructClasses,
             INamedTypeSymbol bitStructAttributeSymbol, INamedTypeSymbol bitArrayAttributeSymbol)
         {
+            // Fill in the results object with default values, to avoid needing to dynamically insert values into the dictionary.
             var classesSizeInfo = new Dictionary<INamedTypeSymbol, ClassSerializeSizeInfo>();
             foreach (INamedTypeSymbol classSymbol in bitStructClasses)
             {
@@ -240,18 +246,44 @@ namespace BitSerialization.Generated
                 });
             }
 
+            // A class has a constant size iff. all its fields are one of the following types:
+            //   a. Integer type.
+            //   b. Enum type.
+            //   c. Classes that have a constant size.
+            //   d. Arrays with a constant length and an element type of a, b or c.
+            //
+            // Because of c and d, this produces a tree(/graph) where constant-size-ness must be propogated from
+            // the leaf nodes up the tree.
+            //
+            // The naive version of this algorithm would be to try to flow the constant-size-ness through the graph
+            // directly. (This would probably be done using a dynamic programming pattern.) However, this wouldn't
+            // handle recursive data structures and could get stuck in an infinite loop.
+            //
+            // So, instead this algorithm borrows techniques from the type inference algorithm. Specifically, it
+            // begins by assuming all types have a dynamic size. Then it iterates through the list of types and
+            // looks for types it can update to have a known constant size. The algorithm keeps looping through
+            // the list of types until there are no more changes.
             for (bool changed = true; changed; changed = false)
             {
                 foreach (INamedTypeSymbol classSymbol in bitStructClasses)
                 {
+                    // Assume the class's size is constant until a member variable is found with a dynamic size.
                     ClassSerializeSizeInfo classSizeInfo = new ClassSerializeSizeInfo()
                     {
                         Type = ClassSerializeSizeType.Const,
                         ConstSize = 0,
                     };
 
+                    if (classesSizeInfo[classSymbol].Type == ClassSerializeSizeType.Const)
+                    {
+                        // Type's serialization size is already known to be constant. So, no point checking again.
+                        continue;
+                    }
+
+                    // Iterate through the class's member variables.
                     foreach (IFieldSymbol classFieldMember in GetClassFieldMembers(classSymbol))
                     {
+                        // Integers and enums have a constant size.
                         if (classFieldMember.Type.IsIntegerType() ||
                             classFieldMember.Type.TypeKind == TypeKind.Enum)
                         {
@@ -263,20 +295,25 @@ namespace BitSerialization.Generated
                         else if (classFieldMember.Type.TypeKind == TypeKind.Class ||
                             classFieldMember.Type.TypeKind == TypeKind.Struct)
                         {
-                            if (!SourceGenUtils.HasAttribute(classFieldMember.Type, bitStructAttributeSymbol))
+                            INamedTypeSymbol fieldType = classFieldMember.Type as INamedTypeSymbol;
+                            if (!classesSizeInfo.ContainsKey(fieldType))
                             {
-                                throw new Exception($"Type {classFieldMember.Type.Name} must have a BitStruct attribute.");
+                                // Classes/structs must have the BitStruct attribute.
+                                // This ensures that the code is specific about which endianess is required for a class because this it not inherited.
+                                context.ReportDiagnostic(Diagnostic.Create(new DiagnosticDescriptor("TMP", "TMP", $"Type {classFieldMember.Type.Name} must have a BitStruct attribute.", "TMP", DiagnosticSeverity.Error, true), Location.Create("TMP", new TextSpan(), new LinePositionSpan())));
+                                continue;
                             }
 
-                            INamedTypeSymbol fieldType = (INamedTypeSymbol)classFieldMember.Type;
                             ClassSerializeSizeInfo fieldTypeSizeInfo = classesSizeInfo[fieldType];
 
                             if (fieldTypeSizeInfo.Type == ClassSerializeSizeType.Const)
                             {
+                                // Type has a constant size.
                                 classSizeInfo.ConstSize += fieldTypeSizeInfo.ConstSize;
                             }
                             else
                             {
+                                // Type has a dynamic size (or is not yet known to have a constant size).
                                 classSizeInfo.Type = ClassSerializeSizeType.Dynamic;
                             }
                         }
@@ -287,6 +324,7 @@ namespace BitSerialization.Generated
                             BitArrayAttribute bitArrayAttribute = SourceGenUtils.GetAttribute<BitArrayAttribute>(classFieldMember, bitArrayAttributeSymbol);
                             if (bitArrayAttribute == null)
                             {
+                                // Arrays must be the BitArray attribute, as this specifies how the array's length is handled.
                                 context.ReportDiagnostic(Diagnostic.Create(new DiagnosticDescriptor("TMP", "TMP", $"Field {classFieldMember.Name} of type {classSymbol.Name} must have a BitArray attribute.", "TMP", DiagnosticSeverity.Error, true), Location.Create("TMP", new TextSpan(), new LinePositionSpan())));
                                 continue;
                             }
@@ -311,10 +349,15 @@ namespace BitSerialization.Generated
                             }
                             else
                             {
+                                // Unsupported type.
+                                // Note: Arrays of arrays aren't supported, as the BitArray attribute is required for the inner arrays.
+                                // Though this can be handled by wrapping the inner arrays in a struct.
                                 context.ReportDiagnostic(Diagnostic.Create(new DiagnosticDescriptor("TMP", "TMP", $"Can't serialize type of {arrayType.ElementType.Name}.", "TMP", DiagnosticSeverity.Error, true), Location.Create("TMP", new TextSpan(), new LinePositionSpan())));
                                 continue;
                             }
 
+                            // A constant length array of a constant size element type has a constant serialization length.
+                            // Otherwise, it has a dynamic serialization length.
                             switch (bitArrayAttribute.SizeType)
                             {
                             case BitArraySizeType.Const:
@@ -333,17 +376,20 @@ namespace BitSerialization.Generated
                                 break;
 
                             default:
+                                // Unsupported type.
                                 context.ReportDiagnostic(Diagnostic.Create(new DiagnosticDescriptor("TMP", "TMP", $"Unknown BitArraySizeType value of {bitArrayAttribute.SizeType}.", "TMP", DiagnosticSeverity.Error, true), Location.Create("TMP", new TextSpan(), new LinePositionSpan())));
                                 continue;
                             }
                         }
                         else
                         {
+                            // Unsupported type.
                             context.ReportDiagnostic(Diagnostic.Create(new DiagnosticDescriptor("TMP", "TMP", $"Can't serialize type of {classSymbol.Name}.", "TMP", DiagnosticSeverity.Error, true), Location.Create("TMP", new TextSpan(), new LinePositionSpan())));
                             continue;
                         }
                     }
 
+                    // Check if the class's size info has changed.
                     if (classSizeInfo != classesSizeInfo[classSymbol])
                     {
                         classesSizeInfo[classSymbol] = classSizeInfo;

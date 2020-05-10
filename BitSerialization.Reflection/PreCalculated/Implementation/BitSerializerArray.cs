@@ -12,6 +12,7 @@ namespace BitSerialization.Reflection.PreCalculated.Implementation
     internal abstract class BitSerializerArray<T>
         where T : struct
     {
+        // The serialization settings for the array.
         private BitArrayAttribute _Settings;
 
         public BitSerializerArray(BitArrayAttribute settings)
