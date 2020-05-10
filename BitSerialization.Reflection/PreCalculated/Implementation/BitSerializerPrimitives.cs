@@ -6,8 +6,8 @@ using System.Runtime.CompilerServices;
 
 namespace BitSerialization.Reflection.PreCalculated.Implementation
 {
-    internal delegate ReadOnlySpan<byte> DeserializeFieldHandler(ReadOnlySpan<byte> source, FieldInfo fieldInfo, TypedReference obj);
-    internal delegate Span<byte> SerializeFieldHandler(Span<byte> destination, FieldInfo fieldInfo, TypedReference obj);
+    internal delegate ReadOnlySpan<byte> DeserializeFieldHandler(ReadOnlySpan<byte> source, FieldInfo fieldInfo, object obj);
+    internal delegate Span<byte> SerializeFieldHandler(Span<byte> destination, FieldInfo fieldInfo, object obj);
 
     internal static class BitSerializerPrimitives
     {
@@ -68,11 +68,11 @@ namespace BitSerialization.Reflection.PreCalculated.Implementation
             return source.Slice(sizeof(byte));
         }
 
-        public static ReadOnlySpan<byte> DeserializeUInt8Field<T>(ReadOnlySpan<byte> source, FieldInfo fieldInfo, TypedReference obj)
+        public static ReadOnlySpan<byte> DeserializeUInt8Field<T>(ReadOnlySpan<byte> source, FieldInfo fieldInfo, object obj)
             where T : struct
         {
             ReadOnlySpan<byte> itr = DeserializeUInt8(source, out var value);
-            fieldInfo.SetValueDirect(obj, Unsafe.As<byte, T>(ref value));
+            fieldInfo.SetValue(obj, Unsafe.As<byte, T>(ref value));
             return itr;
         }
 
@@ -87,11 +87,11 @@ namespace BitSerialization.Reflection.PreCalculated.Implementation
             return source.Slice(sizeof(sbyte));
         }
 
-        public static ReadOnlySpan<byte> DeserializeInt8Field<T>(ReadOnlySpan<byte> source, FieldInfo fieldInfo, TypedReference obj)
+        public static ReadOnlySpan<byte> DeserializeInt8Field<T>(ReadOnlySpan<byte> source, FieldInfo fieldInfo, object obj)
             where T : struct
         {
             ReadOnlySpan<byte> itr = DeserializeInt8(source, out var value);
-            fieldInfo.SetValueDirect(obj, Unsafe.As<sbyte, T>(ref value));
+            fieldInfo.SetValue(obj, Unsafe.As<sbyte, T>(ref value));
             return itr;
         }
 
@@ -101,11 +101,11 @@ namespace BitSerialization.Reflection.PreCalculated.Implementation
             return itr.Slice(sizeof(ushort));
         }
 
-        public static ReadOnlySpan<byte> DeserializeUInt16LittleEndianField<T>(ReadOnlySpan<byte> itr, FieldInfo fieldInfo, TypedReference obj)
+        public static ReadOnlySpan<byte> DeserializeUInt16LittleEndianField<T>(ReadOnlySpan<byte> itr, FieldInfo fieldInfo, object obj)
             where T : struct
         {
             itr = DeserializeUInt16LittleEndian(itr, out var value);
-            fieldInfo.SetValueDirect(obj, Unsafe.As<ushort, T>(ref value));
+            fieldInfo.SetValue(obj, Unsafe.As<ushort, T>(ref value));
             return itr;
         }
 
@@ -115,11 +115,11 @@ namespace BitSerialization.Reflection.PreCalculated.Implementation
             return itr.Slice(sizeof(ushort));
         }
 
-        public static ReadOnlySpan<byte> DeserializeUInt16BigEndianField<T>(ReadOnlySpan<byte> itr, FieldInfo fieldInfo, TypedReference obj)
+        public static ReadOnlySpan<byte> DeserializeUInt16BigEndianField<T>(ReadOnlySpan<byte> itr, FieldInfo fieldInfo, object obj)
             where T : struct
         {
             itr = DeserializeUInt16BigEndian(itr, out var value);
-            fieldInfo.SetValueDirect(obj, Unsafe.As<ushort, T>(ref value));
+            fieldInfo.SetValue(obj, Unsafe.As<ushort, T>(ref value));
             return itr;
         }
 
@@ -129,11 +129,11 @@ namespace BitSerialization.Reflection.PreCalculated.Implementation
             return itr.Slice(sizeof(short));
         }
 
-        public static ReadOnlySpan<byte> DeserializeInt16LittleEndianField<T>(ReadOnlySpan<byte> itr, FieldInfo fieldInfo, TypedReference obj)
+        public static ReadOnlySpan<byte> DeserializeInt16LittleEndianField<T>(ReadOnlySpan<byte> itr, FieldInfo fieldInfo, object obj)
             where T : struct
         {
             itr = DeserializeInt16LittleEndian(itr, out var value);
-            fieldInfo.SetValueDirect(obj, Unsafe.As<short, T>(ref value));
+            fieldInfo.SetValue(obj, Unsafe.As<short, T>(ref value));
             return itr;
         }
 
@@ -143,11 +143,11 @@ namespace BitSerialization.Reflection.PreCalculated.Implementation
             return itr.Slice(sizeof(short));
         }
 
-        public static ReadOnlySpan<byte> DeserializeInt16BigEndianField<T>(ReadOnlySpan<byte> itr, FieldInfo fieldInfo, TypedReference obj)
+        public static ReadOnlySpan<byte> DeserializeInt16BigEndianField<T>(ReadOnlySpan<byte> itr, FieldInfo fieldInfo, object obj)
             where T : struct
         {
             itr = DeserializeInt16BigEndian(itr, out var value);
-            fieldInfo.SetValueDirect(obj, Unsafe.As<short, T>(ref value));
+            fieldInfo.SetValue(obj, Unsafe.As<short, T>(ref value));
             return itr;
         }
 
@@ -157,11 +157,11 @@ namespace BitSerialization.Reflection.PreCalculated.Implementation
             return itr.Slice(sizeof(uint));
         }
 
-        public static ReadOnlySpan<byte> DeserializeUInt32LittleEndianField<T>(ReadOnlySpan<byte> itr, FieldInfo fieldInfo, TypedReference obj)
+        public static ReadOnlySpan<byte> DeserializeUInt32LittleEndianField<T>(ReadOnlySpan<byte> itr, FieldInfo fieldInfo, object obj)
             where T : struct
         {
             itr = DeserializeUInt32LittleEndian(itr, out var value);
-            fieldInfo.SetValueDirect(obj, Unsafe.As<uint, T>(ref value));
+            fieldInfo.SetValue(obj, Unsafe.As<uint, T>(ref value));
             return itr;
         }
 
@@ -171,11 +171,11 @@ namespace BitSerialization.Reflection.PreCalculated.Implementation
             return itr.Slice(sizeof(uint));
         }
 
-        public static ReadOnlySpan<byte> DeserializeUInt32BigEndianField<T>(ReadOnlySpan<byte> itr, FieldInfo fieldInfo, TypedReference obj)
+        public static ReadOnlySpan<byte> DeserializeUInt32BigEndianField<T>(ReadOnlySpan<byte> itr, FieldInfo fieldInfo, object obj)
             where T : struct
         {
             itr = DeserializeUInt32BigEndian(itr, out var value);
-            fieldInfo.SetValueDirect(obj, Unsafe.As<uint, T>(ref value));
+            fieldInfo.SetValue(obj, Unsafe.As<uint, T>(ref value));
             return itr;
         }
 
@@ -185,11 +185,11 @@ namespace BitSerialization.Reflection.PreCalculated.Implementation
             return itr.Slice(sizeof(int));
         }
 
-        public static ReadOnlySpan<byte> DeserializeInt32LittleEndianField<T>(ReadOnlySpan<byte> itr, FieldInfo fieldInfo, TypedReference obj)
+        public static ReadOnlySpan<byte> DeserializeInt32LittleEndianField<T>(ReadOnlySpan<byte> itr, FieldInfo fieldInfo, object obj)
             where T : struct
         {
             itr = DeserializeInt32LittleEndian(itr, out var value);
-            fieldInfo.SetValueDirect(obj, Unsafe.As<int, T>(ref value));
+            fieldInfo.SetValue(obj, Unsafe.As<int, T>(ref value));
             return itr;
         }
 
@@ -199,11 +199,11 @@ namespace BitSerialization.Reflection.PreCalculated.Implementation
             return itr.Slice(sizeof(int));
         }
 
-        public static ReadOnlySpan<byte> DeserializeInt32BigEndianField<T>(ReadOnlySpan<byte> itr, FieldInfo fieldInfo, TypedReference obj)
+        public static ReadOnlySpan<byte> DeserializeInt32BigEndianField<T>(ReadOnlySpan<byte> itr, FieldInfo fieldInfo, object obj)
             where T : struct
         {
             itr = DeserializeInt32BigEndian(itr, out var value);
-            fieldInfo.SetValueDirect(obj, Unsafe.As<int, T>(ref value));
+            fieldInfo.SetValue(obj, Unsafe.As<int, T>(ref value));
             return itr;
         }
 
@@ -213,11 +213,11 @@ namespace BitSerialization.Reflection.PreCalculated.Implementation
             return itr.Slice(sizeof(ulong));
         }
 
-        public static ReadOnlySpan<byte> DeserializeUInt64LittleEndianField<T>(ReadOnlySpan<byte> itr, FieldInfo fieldInfo, TypedReference obj)
+        public static ReadOnlySpan<byte> DeserializeUInt64LittleEndianField<T>(ReadOnlySpan<byte> itr, FieldInfo fieldInfo, object obj)
             where T : struct
         {
             itr = DeserializeUInt64LittleEndian(itr, out var value);
-            fieldInfo.SetValueDirect(obj, Unsafe.As<ulong, T>(ref value));
+            fieldInfo.SetValue(obj, Unsafe.As<ulong, T>(ref value));
             return itr;
         }
 
@@ -227,11 +227,11 @@ namespace BitSerialization.Reflection.PreCalculated.Implementation
             return itr.Slice(sizeof(ulong));
         }
 
-        public static ReadOnlySpan<byte> DeserializeUInt64BigEndianField<T>(ReadOnlySpan<byte> itr, FieldInfo fieldInfo, TypedReference obj)
+        public static ReadOnlySpan<byte> DeserializeUInt64BigEndianField<T>(ReadOnlySpan<byte> itr, FieldInfo fieldInfo, object obj)
             where T : struct
         {
             itr = DeserializeUInt64BigEndian(itr, out var value);
-            fieldInfo.SetValueDirect(obj, Unsafe.As<ulong, T>(ref value));
+            fieldInfo.SetValue(obj, Unsafe.As<ulong, T>(ref value));
             return itr;
         }
 
@@ -241,11 +241,11 @@ namespace BitSerialization.Reflection.PreCalculated.Implementation
             return itr.Slice(sizeof(long));
         }
 
-        public static ReadOnlySpan<byte> DeserializeInt64LittleEndianField<T>(ReadOnlySpan<byte> itr, FieldInfo fieldInfo, TypedReference obj)
+        public static ReadOnlySpan<byte> DeserializeInt64LittleEndianField<T>(ReadOnlySpan<byte> itr, FieldInfo fieldInfo, object obj)
             where T : struct
         {
             itr = DeserializeInt64LittleEndian(itr, out var value);
-            fieldInfo.SetValueDirect(obj, Unsafe.As<long, T>(ref value));
+            fieldInfo.SetValue(obj, Unsafe.As<long, T>(ref value));
             return itr;
         }
 
@@ -255,11 +255,11 @@ namespace BitSerialization.Reflection.PreCalculated.Implementation
             return itr.Slice(sizeof(long));
         }
 
-        public static ReadOnlySpan<byte> DeserializeInt64BigEndianField<T>(ReadOnlySpan<byte> itr, FieldInfo fieldInfo, TypedReference obj)
+        public static ReadOnlySpan<byte> DeserializeInt64BigEndianField<T>(ReadOnlySpan<byte> itr, FieldInfo fieldInfo, object obj)
             where T : struct
         {
             itr = DeserializeInt64BigEndian(itr, out var value);
-            fieldInfo.SetValueDirect(obj, Unsafe.As<long, T>(ref value));
+            fieldInfo.SetValue(obj, Unsafe.As<long, T>(ref value));
             return itr;
         }
 
@@ -274,9 +274,9 @@ namespace BitSerialization.Reflection.PreCalculated.Implementation
             return itr.Slice(sizeof(byte));
         }
 
-        public static Span<byte> SerializeUInt8Field(Span<byte> itr, FieldInfo fieldInfo, TypedReference obj)
+        public static Span<byte> SerializeUInt8Field(Span<byte> itr, FieldInfo fieldInfo, object obj)
         {
-            return SerializeUInt8(itr, (byte)fieldInfo.GetValueDirect(obj)!);
+            return SerializeUInt8(itr, (byte)fieldInfo.GetValue(obj)!);
         }
 
         public static Span<byte> SerializeInt8(Span<byte> itr, sbyte value)
@@ -290,9 +290,9 @@ namespace BitSerialization.Reflection.PreCalculated.Implementation
             return itr.Slice(sizeof(sbyte));
         }
 
-        public static Span<byte> SerializeInt8Field(Span<byte> itr, FieldInfo fieldInfo, TypedReference obj)
+        public static Span<byte> SerializeInt8Field(Span<byte> itr, FieldInfo fieldInfo, object obj)
         {
-            return SerializeInt8(itr, (sbyte)fieldInfo.GetValueDirect(obj)!);
+            return SerializeInt8(itr, (sbyte)fieldInfo.GetValue(obj)!);
         }
 
         public static Span<byte> SerializeUInt16LittleEndian(Span<byte> itr, ushort value)
@@ -301,9 +301,9 @@ namespace BitSerialization.Reflection.PreCalculated.Implementation
             return itr.Slice(sizeof(ushort));
         }
 
-        public static Span<byte> SerializeUInt16LittleEndianField(Span<byte> itr, FieldInfo fieldInfo, TypedReference obj)
+        public static Span<byte> SerializeUInt16LittleEndianField(Span<byte> itr, FieldInfo fieldInfo, object obj)
         {
-            return SerializeUInt16LittleEndian(itr, (ushort)fieldInfo.GetValueDirect(obj)!);
+            return SerializeUInt16LittleEndian(itr, (ushort)fieldInfo.GetValue(obj)!);
         }
 
         public static Span<byte> SerializeUInt16BigEndian(Span<byte> itr, ushort value)
@@ -312,9 +312,9 @@ namespace BitSerialization.Reflection.PreCalculated.Implementation
             return itr.Slice(sizeof(ushort));
         }
 
-        public static Span<byte> SerializeUInt16BigEndianField(Span<byte> itr, FieldInfo fieldInfo, TypedReference obj)
+        public static Span<byte> SerializeUInt16BigEndianField(Span<byte> itr, FieldInfo fieldInfo, object obj)
         {
-            return SerializeUInt16BigEndian(itr, (ushort)fieldInfo.GetValueDirect(obj)!);
+            return SerializeUInt16BigEndian(itr, (ushort)fieldInfo.GetValue(obj)!);
         }
 
         public static Span<byte> SerializeInt16LittleEndian(Span<byte> itr, short value)
@@ -323,9 +323,9 @@ namespace BitSerialization.Reflection.PreCalculated.Implementation
             return itr.Slice(sizeof(short));
         }
 
-        public static Span<byte> SerializeInt16LittleEndianField(Span<byte> itr, FieldInfo fieldInfo, TypedReference obj)
+        public static Span<byte> SerializeInt16LittleEndianField(Span<byte> itr, FieldInfo fieldInfo, object obj)
         {
-            return SerializeInt16LittleEndian(itr, (short)fieldInfo.GetValueDirect(obj)!);
+            return SerializeInt16LittleEndian(itr, (short)fieldInfo.GetValue(obj)!);
         }
 
         public static Span<byte> SerializeInt16BigEndian(Span<byte> itr, short value)
@@ -334,9 +334,9 @@ namespace BitSerialization.Reflection.PreCalculated.Implementation
             return itr.Slice(sizeof(short));
         }
 
-        public static Span<byte> SerializeInt16BigEndianField(Span<byte> itr, FieldInfo fieldInfo, TypedReference obj)
+        public static Span<byte> SerializeInt16BigEndianField(Span<byte> itr, FieldInfo fieldInfo, object obj)
         {
-            return SerializeInt16BigEndian(itr, (short)fieldInfo.GetValueDirect(obj)!);
+            return SerializeInt16BigEndian(itr, (short)fieldInfo.GetValue(obj)!);
         }
 
         public static Span<byte> SerializeUInt32LittleEndian(Span<byte> itr, uint value)
@@ -345,9 +345,9 @@ namespace BitSerialization.Reflection.PreCalculated.Implementation
             return itr.Slice(sizeof(uint));
         }
 
-        public static Span<byte> SerializeUInt32LittleEndianField(Span<byte> itr, FieldInfo fieldInfo, TypedReference obj)
+        public static Span<byte> SerializeUInt32LittleEndianField(Span<byte> itr, FieldInfo fieldInfo, object obj)
         {
-            return SerializeUInt32LittleEndian(itr, (uint)fieldInfo.GetValueDirect(obj)!);
+            return SerializeUInt32LittleEndian(itr, (uint)fieldInfo.GetValue(obj)!);
         }
 
         public static Span<byte> SerializeUInt32BigEndian(Span<byte> itr, uint value)
@@ -356,9 +356,9 @@ namespace BitSerialization.Reflection.PreCalculated.Implementation
             return itr.Slice(sizeof(uint));
         }
 
-        public static Span<byte> SerializeUInt32BigEndianField(Span<byte> itr, FieldInfo fieldInfo, TypedReference obj)
+        public static Span<byte> SerializeUInt32BigEndianField(Span<byte> itr, FieldInfo fieldInfo, object obj)
         {
-            return SerializeUInt32BigEndian(itr, (uint)fieldInfo.GetValueDirect(obj)!);
+            return SerializeUInt32BigEndian(itr, (uint)fieldInfo.GetValue(obj)!);
         }
 
         public static Span<byte> SerializeInt32LittleEndian(Span<byte> itr, int value)
@@ -367,9 +367,9 @@ namespace BitSerialization.Reflection.PreCalculated.Implementation
             return itr.Slice(sizeof(int));
         }
 
-        public static Span<byte> SerializeInt32LittleEndianField(Span<byte> itr, FieldInfo fieldInfo, TypedReference obj)
+        public static Span<byte> SerializeInt32LittleEndianField(Span<byte> itr, FieldInfo fieldInfo, object obj)
         {
-            return SerializeInt32LittleEndian(itr, (int)fieldInfo.GetValueDirect(obj)!);
+            return SerializeInt32LittleEndian(itr, (int)fieldInfo.GetValue(obj)!);
         }
 
         public static Span<byte> SerializeInt32BigEndian(Span<byte> itr, int value)
@@ -378,9 +378,9 @@ namespace BitSerialization.Reflection.PreCalculated.Implementation
             return itr.Slice(sizeof(int));
         }
 
-        public static Span<byte> SerializeInt32BigEndianField(Span<byte> itr, FieldInfo fieldInfo, TypedReference obj)
+        public static Span<byte> SerializeInt32BigEndianField(Span<byte> itr, FieldInfo fieldInfo, object obj)
         {
-            return SerializeInt32BigEndian(itr, (int)fieldInfo.GetValueDirect(obj)!);
+            return SerializeInt32BigEndian(itr, (int)fieldInfo.GetValue(obj)!);
         }
 
         public static Span<byte> SerializeUInt64LittleEndian(Span<byte> itr, ulong value)
@@ -389,9 +389,9 @@ namespace BitSerialization.Reflection.PreCalculated.Implementation
             return itr.Slice(sizeof(ulong));
         }
 
-        public static Span<byte> SerializeUInt64LittleEndianField(Span<byte> itr, FieldInfo fieldInfo, TypedReference obj)
+        public static Span<byte> SerializeUInt64LittleEndianField(Span<byte> itr, FieldInfo fieldInfo, object obj)
         {
-            return SerializeUInt64LittleEndian(itr, (ulong)fieldInfo.GetValueDirect(obj)!);
+            return SerializeUInt64LittleEndian(itr, (ulong)fieldInfo.GetValue(obj)!);
         }
 
         public static Span<byte> SerializeUInt64BigEndian(Span<byte> itr, ulong value)
@@ -400,9 +400,9 @@ namespace BitSerialization.Reflection.PreCalculated.Implementation
             return itr.Slice(sizeof(ulong));
         }
 
-        public static Span<byte> SerializeUInt64BigEndianField(Span<byte> itr, FieldInfo fieldInfo, TypedReference obj)
+        public static Span<byte> SerializeUInt64BigEndianField(Span<byte> itr, FieldInfo fieldInfo, object obj)
         {
-            return SerializeUInt64BigEndian(itr, (ulong)fieldInfo.GetValueDirect(obj)!);
+            return SerializeUInt64BigEndian(itr, (ulong)fieldInfo.GetValue(obj)!);
         }
 
         public static Span<byte> SerializeInt64LittleEndian(Span<byte> itr, long value)
@@ -411,9 +411,9 @@ namespace BitSerialization.Reflection.PreCalculated.Implementation
             return itr.Slice(sizeof(long));
         }
 
-        public static Span<byte> SerializeInt64LittleEndianField(Span<byte> itr, FieldInfo fieldInfo, TypedReference obj)
+        public static Span<byte> SerializeInt64LittleEndianField(Span<byte> itr, FieldInfo fieldInfo, object obj)
         {
-            return SerializeInt64LittleEndian(itr, (long)fieldInfo.GetValueDirect(obj)!);
+            return SerializeInt64LittleEndian(itr, (long)fieldInfo.GetValue(obj)!);
         }
 
         public static Span<byte> SerializeInt64BigEndian(Span<byte> itr, long value)
@@ -422,9 +422,9 @@ namespace BitSerialization.Reflection.PreCalculated.Implementation
             return itr.Slice(sizeof(long));
         }
 
-        public static Span<byte> SerializeInt64BigEndianField(Span<byte> itr, FieldInfo fieldInfo, TypedReference obj)
+        public static Span<byte> SerializeInt64BigEndianField(Span<byte> itr, FieldInfo fieldInfo, object obj)
         {
-            return SerializeInt64BigEndian(itr, (long)fieldInfo.GetValueDirect(obj)!);
+            return SerializeInt64BigEndian(itr, (long)fieldInfo.GetValue(obj)!);
         }
     }
 }

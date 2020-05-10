@@ -50,11 +50,10 @@ namespace BitSerialization.Reflection.PreCalculated.Implementation
             }
         }
 
-        public ReadOnlySpan<byte> DeserializeField(ReadOnlySpan<byte> itr, FieldInfo fieldInfo, TypedReference obj)
+        public ReadOnlySpan<byte> DeserializeField(ReadOnlySpan<byte> itr, FieldInfo fieldInfo, object obj)
         {
-            T[] value;
-            itr = Deserialize(itr, out value);
-            fieldInfo.SetValueDirect(obj, value);
+            itr = Deserialize(itr, out var tmp);
+            fieldInfo.SetValue(obj, tmp);
             return itr;
         }
 
@@ -107,9 +106,9 @@ namespace BitSerialization.Reflection.PreCalculated.Implementation
             }
         }
 
-        public Span<byte> SerializeField(Span<byte> itr, FieldInfo fieldInfo, TypedReference obj)
+        public Span<byte> SerializeField(Span<byte> itr, FieldInfo fieldInfo, object obj)
         {
-            itr = Serialize(itr, (T[])fieldInfo.GetValueDirect(obj)!);
+            itr = Serialize(itr, (T[]?)fieldInfo.GetValue(obj));
             return itr;
         }
 

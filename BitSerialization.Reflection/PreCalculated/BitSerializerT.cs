@@ -149,40 +149,40 @@ namespace BitSerialization.Reflection.PreCalculated
 
         public static ReadOnlySpan<byte> Deserialize(ReadOnlySpan<byte> itr, out T value)
         {
-            value = new T();
-            TypedReference resultRef = __makeref(value);
+            object valueAsObject = new T();
 
             foreach (FieldSerializationData play in _Playbook)
             {
-                itr = play.DeserializeFunc(itr, play.FieldInfo, resultRef);
+                itr = play.DeserializeFunc(itr, play.FieldInfo, valueAsObject);
             }
 
+            value = (T)valueAsObject;
             return itr;
         }
 
-        public static ReadOnlySpan<byte> DeserializeField(ReadOnlySpan<byte> itr, FieldInfo fieldInfo, TypedReference obj)
+        public static ReadOnlySpan<byte> DeserializeField(ReadOnlySpan<byte> itr, FieldInfo fieldInfo, object obj)
         {
             T value;
             itr = Deserialize(itr, out value);
-            fieldInfo.SetValueDirect(obj, value);
+            fieldInfo.SetValue(obj, value);
             return itr;
         }
 
         public static Span<byte> Serialize(Span<byte> itr, in T value)
         {
-            TypedReference resultRef = __makeref(Unsafe.AsRef(value));
+            object valueAsObject = value;
 
             foreach (FieldSerializationData play in _Playbook)
             {
-                itr = play.SerializeFunc(itr, play.FieldInfo, resultRef);
+                itr = play.SerializeFunc(itr, play.FieldInfo, valueAsObject);
             }
 
             return itr;
         }
 
-        public static Span<byte> SerializeField(Span<byte> itr, FieldInfo fieldInfo, TypedReference obj)
+        public static Span<byte> SerializeField(Span<byte> itr, FieldInfo fieldInfo, object obj)
         {
-            object? valueAsObject = fieldInfo.GetValueDirect(obj);
+            object? valueAsObject = fieldInfo.GetValue(obj);
             return Serialize(itr, in Unsafe.Unbox<T>(valueAsObject));
         }
     }

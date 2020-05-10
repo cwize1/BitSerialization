@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "BitSerialization.PerfTests": {
+      "commandName": "Project",
+      "commandLineArgs": "--filter *BitSerializerBenchmark*"
+    }
+  }
+}
