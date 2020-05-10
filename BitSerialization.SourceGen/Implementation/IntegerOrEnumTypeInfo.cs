@@ -2,7 +2,7 @@
 // Copyright (c) 2020 Chris Gunn
 //
 
-namespace BitSerialization.SourceGen
+namespace BitSerialization.SourceGen.Implementation
 {
     internal struct IntegerOrEnumTypeInfo
     {

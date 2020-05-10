@@ -8,7 +8,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace BitSerialization.SourceGen
+namespace BitSerialization.SourceGen.Implementation
 {
     internal static class SourceGenUtils
     {

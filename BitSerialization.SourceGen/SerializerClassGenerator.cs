@@ -3,6 +3,7 @@
 //
 
 using BitSerialization.Common;
+using BitSerialization.SourceGen.Implementation;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
