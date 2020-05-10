@@ -1,4 +1,8 @@
-﻿using System;
+﻿//
+// Copyright (c) 2020 Chris Gunn
+//
+
+using System;
 using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Reflection;

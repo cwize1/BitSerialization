@@ -1,4 +1,8 @@
-﻿using BitSerialization.Common;
+﻿//
+// Copyright (c) 2020 Chris Gunn
+//
+
+using BitSerialization.Common;
 using BitSerialization.Reflection.Utilities;
 using System;
 using System.Buffers.Binary;

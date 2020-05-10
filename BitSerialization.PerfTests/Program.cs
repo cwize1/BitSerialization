@@ -1,5 +1,8 @@
-﻿using BenchmarkDotNet.Running;
-using System;
+﻿//
+// Copyright (c) 2020 Chris Gunn
+//
+
+using BenchmarkDotNet.Running;
 
 namespace BitSerialization.PerfTests
 {

@@ -1,4 +1,8 @@
-﻿using BitSerialization.Common;
+﻿//
+// Copyright (c) 2020 Chris Gunn
+//
+
+using BitSerialization.Common;
 using System;
 
 namespace BitSerialization.Reflection.PreCalculated.Implementation

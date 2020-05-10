@@ -1,4 +1,8 @@
-﻿using System;
+﻿//
+// Copyright (c) 2020 Chris Gunn
+//
+
+using System;
 
 namespace BitSerialization.Reflection.Utilities
 {

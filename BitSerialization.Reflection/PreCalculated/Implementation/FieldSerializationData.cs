@@ -1,4 +1,8 @@
-﻿using System.Reflection;
+﻿//
+// Copyright (c) 2020 Chris Gunn
+//
+
+using System.Reflection;
 
 namespace BitSerialization.Reflection.PreCalculated.Implementation
 {

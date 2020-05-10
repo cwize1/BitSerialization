@@ -1,4 +1,8 @@
-﻿using BenchmarkDotNet.Attributes;
+﻿//
+// Copyright (c) 2020 Chris Gunn
+//
+
+using BenchmarkDotNet.Attributes;
 using BitSerialization.Common;
 using BitSerialization.Reflection.OnTheFly;
 using BitSerialization.Reflection.PreCalculated;
@@ -9,78 +13,104 @@ namespace BitSerialization.PerfTests
 {
     public partial class BitSerializerBenchmark
     {
+        internal enum Enum1 : int
+        {
+            A,
+            B,
+        }
+
         [StructLayout(LayoutKind.Sequential)]
         [BitStruct]
-        internal struct BasicStruct
+        internal struct Struct1
         {
             public byte A;
             public sbyte B;
             public ushort C;
             public short D;
+            public uint E;
+            public int F;
+            public ulong G;
+            public long H;
         }
 
         [StructLayout(LayoutKind.Sequential)]
         [BitStruct]
-        internal struct ArrayOfBasicStruct
+        internal struct Struct2
         {
-            [BitArray(BitArraySizeType.EndFill)]
-            public BasicStruct[]? AnArray;
+            public Struct1 A;
+            public Enum1 B;
         }
 
-        private readonly ArrayOfBasicStruct _SimpleArray;
-        private readonly int _SimpleArraySize;
+        [StructLayout(LayoutKind.Sequential)]
+        [BitStruct]
+        internal struct Struct3
+        {
+            [BitArray(BitArraySizeType.EndFill)]
+            public Struct2[]? AnArray;
+        }
+
+        private readonly Struct3 _Data;
+        private readonly int _DataSerializationSize;
 
         public BitSerializerBenchmark()
         {
             Random random = new Random();
 
-            _SimpleArray = new ArrayOfBasicStruct()
+            _Data = new Struct3()
             {
-                AnArray = new BasicStruct[200],
+                AnArray = new Struct2[200],
             };
 
-            for (int i = 0; i != _SimpleArray.AnArray.Length; ++i)
+            for (int i = 0; i != _Data.AnArray.Length; ++i)
             {
-                _SimpleArray.AnArray[i] = new BasicStruct()
+                _Data.AnArray[i] = new Struct2()
                 {
-                    A = (byte)random.Next(byte.MinValue, byte.MaxValue + 1),
-                    B = (sbyte)random.Next(sbyte.MinValue, sbyte.MaxValue + 1),
-                    C = (ushort)random.Next(ushort.MinValue, ushort.MaxValue + 1),
-                    D = (short)random.Next(short.MinValue, short.MaxValue + 1),
+                    A = new Struct1()
+                    {
+                        A = (byte)random.Next(byte.MinValue, byte.MaxValue + 1),
+                        B = (sbyte)random.Next(sbyte.MinValue, sbyte.MaxValue + 1),
+                        C = (ushort)random.Next(ushort.MinValue, ushort.MaxValue + 1),
+                        D = (short)random.Next(short.MinValue, short.MaxValue + 1),
+                        E = (uint)random.Next(),
+                        F = random.Next(),
+                        G = (uint)random.Next(),
+                        H = random.Next(),
+                    },
+                    B = (Enum1)random.Next(),
                 };
             }
 
-            _SimpleArraySize = ArrayOfBasicStructSerializer.CalculateSize(_SimpleArray);
+            _DataSerializationSize = Struct3Serializer.CalculateSize(_Data);
         }
 
         [Benchmark]
         public void OnTheFly()
         {
-            byte[] output = new byte[_SimpleArraySize];
-            BitSerializer.Serialize(_SimpleArray, output);
+            byte[] output = new byte[_DataSerializationSize];
+            BitSerializer.Serialize(_Data, output);
 
-            ArrayOfBasicStruct value;
+            Struct3 value;
             BitSerializer.Deserialize(output, out value);
         }
 
         [Benchmark]
         public void PreCalculated()
         {
-            byte[] output = new byte[_SimpleArraySize];
-            BitSerializer<ArrayOfBasicStruct>.Serialize(output, _SimpleArray);
+            byte[] output = new byte[_DataSerializationSize];
+            BitSerializer<Struct3>.Serialize(output, _Data);
 
-            ArrayOfBasicStruct value;
-            BitSerializer<ArrayOfBasicStruct>.Deserialize(output, out value);
+            Struct3 value;
+            BitSerializer<Struct3>.Deserialize(output, out value);
         }
 
         [Benchmark(Baseline = true)]
         public void CodeGen()
         {
-            byte[] output = new byte[_SimpleArraySize];
-            ArrayOfBasicStructSerializer.Serialize(output, _SimpleArray);
+            byte[] output = new byte[_DataSerializationSize];
+            Struct3Serializer.Serialize(output, _Data);
 
-            ArrayOfBasicStruct value;
-            ArrayOfBasicStructSerializer.Deserialize(output, out value);
+            Struct3 value;
+            Struct3Serializer.Deserialize(output, out value);
         }
     }
 }

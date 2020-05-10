@@ -1,9 +1,12 @@
+//
+// Copyright (c) 2020 Chris Gunn
+//
+
 using BitSerialization.Common;
 using BitSerialization.Reflection.OnTheFly;
 using BitSerialization.Reflection.PreCalculated;
 using KellermanSoftware.CompareNetObjects;
 using System;
-using System.Drawing;
 using System.Runtime.InteropServices;
 using Xunit;
 
