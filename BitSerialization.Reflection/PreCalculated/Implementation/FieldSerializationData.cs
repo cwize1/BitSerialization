@@ -5,7 +5,7 @@
 using System;
 using System.Reflection;
 
-namespace BitSerialization.Reflection.PreCalculated.Implementation
+namespace BitSerialization.Reflection.Precalculated.Implementation
 {
     // Function type for deserializing a field on an object.
     // Note: The FieldInfo value is passed into this function to allow the JIT-compiler to optimize the FieldInfo.SetValue call

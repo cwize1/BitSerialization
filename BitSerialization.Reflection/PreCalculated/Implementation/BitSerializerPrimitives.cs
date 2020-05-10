@@ -9,7 +9,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 
-namespace BitSerialization.Reflection.PreCalculated.Implementation
+namespace BitSerialization.Reflection.Precalculated.Implementation
 {
     internal static class BitSerializerPrimitives
     {

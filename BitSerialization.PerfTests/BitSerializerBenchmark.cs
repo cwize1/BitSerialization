@@ -5,7 +5,7 @@
 using BenchmarkDotNet.Attributes;
 using BitSerialization.Common;
 using BitSerialization.Reflection.OnTheFly;
-using BitSerialization.Reflection.PreCalculated;
+using BitSerialization.Reflection.Precalculated;
 using System;
 using System.Runtime.InteropServices;
 
@@ -94,7 +94,7 @@ namespace BitSerialization.PerfTests
         }
 
         [Benchmark]
-        public void PreCalculated()
+        public void Precalculated()
         {
             byte[] output = new byte[_DataSerializationSize];
             BitSerializer<Struct3>.Serialize(output, _Data);

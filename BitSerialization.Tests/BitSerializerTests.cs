@@ -4,7 +4,7 @@
 
 using BitSerialization.Common;
 using BitSerialization.Reflection.OnTheFly;
-using BitSerialization.Reflection.PreCalculated;
+using BitSerialization.Reflection.Precalculated;
 using KellermanSoftware.CompareNetObjects;
 using System;
 using System.Runtime.InteropServices;

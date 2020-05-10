@@ -5,7 +5,7 @@
 using BitSerialization.Common;
 using System;
 
-namespace BitSerialization.Reflection.PreCalculated.Implementation
+namespace BitSerialization.Reflection.Precalculated.Implementation
 {
     internal sealed class BitSerializerStructArray<T> :
         BitSerializerArray<T>

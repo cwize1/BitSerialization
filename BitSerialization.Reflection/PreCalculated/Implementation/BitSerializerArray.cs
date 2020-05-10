@@ -7,7 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 
-namespace BitSerialization.Reflection.PreCalculated.Implementation
+namespace BitSerialization.Reflection.Precalculated.Implementation
 {
     internal abstract class BitSerializerArray<T>
         where T : struct
